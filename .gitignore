@@ -100,3 +100,5 @@ out/
 dist/
 build/
 .cache/
+# Backup local do Portal
+portal_backup/
