@@ -469,69 +469,15 @@ export default function AvcbPage() {
 
       {/* DISTRIBUIÇÃO */}
       <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03]">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-          <div>
-            <h2 className="text-base font-semibold text-gray-900 dark:text-white">
-              Distribuição por status
-            </h2>
+        <div>
+          <h2 className="text-base font-semibold text-gray-900 dark:text-white">
+            Distribuição por status
+          </h2>
 
-            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              Situação atual dos AVCBs
-              selecionados.
-            </p>
-          </div>
-
-          <div className="flex flex-wrap gap-2">
-            <StatusButton
-              label="Todos"
-              ativo={
-                statusFiltro ===
-                "TODOS"
-              }
-              onClick={() =>
-                setStatusFiltro("TODOS")
-              }
-            />
-
-            <StatusButton
-              label="Vencido"
-              ativo={
-                statusFiltro ===
-                "VENCIDO"
-              }
-              onClick={() =>
-                setStatusFiltro(
-                  "VENCIDO",
-                )
-              }
-            />
-
-            <StatusButton
-              label="A vencer"
-              ativo={
-                statusFiltro ===
-                "A VENCER"
-              }
-              onClick={() =>
-                setStatusFiltro(
-                  "A VENCER",
-                )
-              }
-            />
-
-            <StatusButton
-              label="Regular"
-              ativo={
-                statusFiltro ===
-                "REGULAR"
-              }
-              onClick={() =>
-                setStatusFiltro(
-                  "REGULAR",
-                )
-              }
-            />
-          </div>
+          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+            Situação atual dos AVCBs
+            selecionados.
+          </p>
         </div>
 
         <div className="mt-6 space-y-5">
@@ -615,6 +561,64 @@ export default function AvcbPage() {
               statusGestaoOpcoes
             }
           />
+        </div>
+
+        <div className="mt-5 border-t border-gray-100 pt-4 dark:border-gray-800">
+          <p className="mb-3 text-xs font-medium text-gray-700 dark:text-gray-300">
+            Status do AVCB
+          </p>
+
+          <div className="flex flex-wrap gap-2">
+            <StatusButton
+              label="Todos"
+              ativo={
+                statusFiltro ===
+                "TODOS"
+              }
+              onClick={() =>
+                setStatusFiltro("TODOS")
+              }
+            />
+
+            <StatusButton
+              label="Vencido"
+              ativo={
+                statusFiltro ===
+                "VENCIDO"
+              }
+              onClick={() =>
+                setStatusFiltro(
+                  "VENCIDO",
+                )
+              }
+            />
+
+            <StatusButton
+              label="A vencer"
+              ativo={
+                statusFiltro ===
+                "A VENCER"
+              }
+              onClick={() =>
+                setStatusFiltro(
+                  "A VENCER",
+                )
+              }
+            />
+
+            <StatusButton
+              label="Regular"
+              ativo={
+                statusFiltro ===
+                "REGULAR"
+              }
+              onClick={() =>
+                setStatusFiltro(
+                  "REGULAR",
+                )
+              }
+            />
+          </div>
         </div>
       </div>
 
