@@ -42,7 +42,11 @@ export async function updateSession(request: NextRequest) {
 
   const pathname = request.nextUrl.pathname;
 
-  const isPublicRoute = pathname === "/signin";
+  const isPublicRoute =
+    pathname === "/signin" ||
+    pathname === "/esqueci-senha" ||
+    pathname.startsWith("/auth/confirm");
+
   const isApiRoute = pathname.startsWith("/api/");
 
   if (!claims && !isPublicRoute && !isApiRoute) {

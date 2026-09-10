@@ -3,6 +3,8 @@
 import { EyeCloseIcon, EyeIcon } from "@/icons";
 import { createClient } from "@/lib/supabase/client";
 
+import Image from "next/image";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import React, { FormEvent, useState } from "react";
 
@@ -60,109 +62,178 @@ export default function SignInForm() {
   };
 
   const inputClassName =
-    "h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs outline-none transition focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800";
+    "h-12 w-full rounded-xl border border-slate-300 bg-white px-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 dark:border-slate-700 dark:bg-slate-900 dark:text-white";
 
   return (
-    <div className="flex w-full flex-1 flex-col lg:w-1/2">
-      <div className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center">
-        <div>
-          <div className="mb-5 sm:mb-8">
-            <h1 className="mb-2 text-title-sm font-semibold text-gray-800 dark:text-white/90 sm:text-title-md">
-              Portal SSO
-            </h1>
-
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              Entre com suas credenciais para acessar o Portal de Segurança e
-              Saúde Ocupacional.
-            </p>
+    <div className="w-full">
+      <div className="mb-10">
+        <div className="mb-10 flex items-center gap-3">
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <Image
+              src="/images/logo/seguranca-trabalho.png"
+              alt="CELEO Portal SSO"
+              width={32}
+              height={32}
+              className="object-contain"
+            />
           </div>
 
-          <form onSubmit={handleSignIn}>
-            <div className="space-y-6">
-              <div>
-                <label
-                  htmlFor="email"
-                  className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400"
-                >
-                  E-mail <span className="text-error-500">*</span>
-                </label>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
+              CELEO
+            </p>
 
-                <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  autoComplete="email"
-                  placeholder="seu.email@empresa.com"
-                  value={email}
-                  onChange={(event) => setEmail(event.target.value)}
-                  className={inputClassName}
-                  required
-                />
-              </div>
+            <p className="mt-0.5 text-lg font-semibold text-slate-900 dark:text-white">
+              Portal SSO
+            </p>
+          </div>
+        </div>
 
-              <div>
-                <label
-                  htmlFor="password"
-                  className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400"
-                >
-                  Senha <span className="text-error-500">*</span>
-                </label>
+        <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-sky-600">
+          Acesso corporativo
+        </p>
 
-                <div className="relative">
-                  <input
-                    id="password"
-                    name="password"
-                    type={showPassword ? "text" : "password"}
-                    autoComplete="current-password"
-                    placeholder="Digite sua senha"
-                    value={password}
-                    onChange={(event) => setPassword(event.target.value)}
-                    className={`${inputClassName} pr-12`}
-                    required
-                  />
+        <h2 className="text-3xl font-semibold tracking-tight text-slate-950 dark:text-white sm:text-4xl">
+          Bem-vindo ao Portal SSO
+        </h2>
 
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setShowPassword((current) => !current)
-                    }
-                    className="absolute right-4 top-1/2 z-30 -translate-y-1/2"
-                    aria-label={
-                      showPassword ? "Ocultar senha" : "Mostrar senha"
-                    }
-                  >
-                    {showPassword ? (
-                      <EyeIcon className="fill-gray-500 dark:fill-gray-400" />
-                    ) : (
-                      <EyeCloseIcon className="fill-gray-500 dark:fill-gray-400" />
-                    )}
-                  </button>
-                </div>
-              </div>
+        <p className="mt-4 max-w-sm text-sm leading-6 text-slate-500 dark:text-slate-400">
+          Entre com suas credenciais para acessar o ambiente de Segurança e
+          Saúde Ocupacional.
+        </p>
+      </div>
 
-              {errorMessage && (
-                <div className="rounded-lg border border-error-200 bg-error-50 px-4 py-3 dark:border-error-500/30 dark:bg-error-500/10">
-                  <p className="text-sm text-error-600 dark:text-error-400">
-                    {errorMessage}
-                  </p>
-                </div>
-              )}
+      <form onSubmit={handleSignIn}>
+        <div className="space-y-5">
+          <div>
+            <label
+              htmlFor="email"
+              className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300"
+            >
+              E-mail corporativo
+            </label>
+
+            <input
+              id="email"
+              name="email"
+              type="email"
+              autoComplete="email"
+              placeholder="seu.email@empresa.com"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              className={inputClassName}
+              required
+            />
+          </div>
+
+          <div>
+            <div className="mb-2 flex items-center justify-between">
+              <label
+                htmlFor="password"
+                className="block text-sm font-medium text-slate-700 dark:text-slate-300"
+              >
+                Senha
+              </label>
+
+              <Link
+                href="/esqueci-senha"
+                className="text-sm font-medium text-sky-600 transition hover:text-sky-700 hover:underline"
+              >
+                Esqueci minha senha
+              </Link>
+            </div>
+
+            <div className="relative">
+              <input
+                id="password"
+                name="password"
+                type={showPassword ? "text" : "password"}
+                autoComplete="current-password"
+                placeholder="Digite sua senha"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                className={`${inputClassName} pr-12`}
+                required
+              />
 
               <button
-                type="submit"
-                disabled={isLoading}
-                className="flex w-full items-center justify-center rounded-lg bg-brand-500 px-4 py-3 text-sm font-medium text-white transition hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-60"
+                type="button"
+                onClick={() =>
+                  setShowPassword((current) => !current)
+                }
+                className="absolute right-4 top-1/2 z-20 -translate-y-1/2"
+                aria-label={
+                  showPassword ? "Ocultar senha" : "Mostrar senha"
+                }
               >
-                {isLoading ? "Entrando..." : "Entrar"}
+                {showPassword ? (
+                  <EyeIcon className="fill-slate-500 dark:fill-slate-400" />
+                ) : (
+                  <EyeCloseIcon className="fill-slate-500 dark:fill-slate-400" />
+                )}
               </button>
             </div>
-          </form>
-
-          <div className="mt-6">
-            <p className="text-center text-xs text-gray-400 dark:text-gray-500">
-              Acesso restrito a usuários autorizados.
-            </p>
           </div>
+
+          {errorMessage && (
+            <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 dark:border-red-500/30 dark:bg-red-500/10">
+              <p className="text-sm text-red-600 dark:text-red-400">
+                {errorMessage}
+              </p>
+            </div>
+          )}
+
+          <button
+            type="submit"
+            disabled={isLoading}
+            className="mt-2 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 focus:outline-none focus:ring-4 focus:ring-slate-900/15 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-sky-500 dark:hover:bg-sky-600"
+          >
+            {isLoading ? (
+              "Entrando..."
+            ) : (
+              <>
+                Entrar no Portal
+
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  aria-hidden="true"
+                >
+                  <path
+                    d="M5 12h14M13 6l6 6-6 6"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </>
+            )}
+          </button>
+        </div>
+      </form>
+
+      <div className="mt-8 border-t border-slate-200 pt-6 dark:border-slate-800">
+        <div className="flex items-center gap-2 text-xs text-slate-400">
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            className="shrink-0"
+          >
+            <path
+              d="M12 3 5 6v5c0 4.6 2.9 8.1 7 10 4.1-1.9 7-5.4 7-10V6l-7-3Z"
+              stroke="currentColor"
+              strokeWidth="1.7"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+
+          <span>Acesso restrito a usuários autorizados.</span>
         </div>
       </div>
     </div>
