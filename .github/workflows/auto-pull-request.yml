@@ -1,0 +1,47 @@
+﻿name: Criar Pull Request automaticamente
+
+on:
+  push:
+    branches:
+      - "feat/**"
+      - "fix/**"
+      - "chore/**"
+
+jobs:
+  create-pull-request:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Criar Pull Request para main
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BRANCH_NAME: ${{ github.ref_name }}
+        run: |
+          EXISTING_PR=$(gh pr list \
+            --head "$BRANCH_NAME" \
+            --base main \
+            --state open \
+            --json number \
+            --jq 'length')
+
+          if [ "$EXISTING_PR" -eq "0" ]; then
+            gh pr create \
+              --base main \
+              --head "$BRANCH_NAME" \
+              --title "PR automático: $BRANCH_NAME" \
+              --body "Pull Request criado automaticamente após push na branch \`$BRANCH_NAME\`.
+
+          Branch de origem: \`$BRANCH_NAME\`
+          Branch de destino: \`main\`
+
+          Criado automaticamente pelo GitHub Actions."
+          else
+            echo "Já existe um Pull Request aberto para $BRANCH_NAME."
+          fi
