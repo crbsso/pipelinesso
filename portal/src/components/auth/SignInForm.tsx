@@ -42,7 +42,7 @@ export default function SignInForm() {
         console.error("Erro de autenticação:", error.message);
 
         setErrorMessage(
-          "Não foi possível entrar. Verifique seu e-mail e sua senha."
+          "Não foi possível entrar. Verifique seu e-mail e sua senha.",
         );
 
         return;
@@ -54,7 +54,7 @@ export default function SignInForm() {
       console.error("Erro inesperado no login:", error);
 
       setErrorMessage(
-        "Ocorreu um erro ao tentar entrar no Portal SSO."
+        "Ocorreu um erro ao tentar entrar no Portal SSO.",
       );
     } finally {
       setIsLoading(false);
@@ -215,6 +215,19 @@ export default function SignInForm() {
         </div>
       </form>
 
+      <div className="mt-6 text-center">
+        <span className="text-sm text-slate-500 dark:text-slate-400">
+          Ainda não possui acesso?{" "}
+        </span>
+
+        <Link
+          href="/solicitar-acesso"
+          className="text-sm font-semibold text-sky-600 transition hover:text-sky-700 hover:underline dark:text-sky-400"
+        >
+          Solicitar acesso
+        </Link>
+      </div>
+
       <div className="mt-8 border-t border-slate-200 pt-6 dark:border-slate-800">
         <div className="flex items-center gap-2 text-xs text-slate-400">
           <svg
@@ -223,6 +236,7 @@ export default function SignInForm() {
             viewBox="0 0 24 24"
             fill="none"
             className="shrink-0"
+            aria-hidden="true"
           >
             <path
               d="M12 3 5 6v5c0 4.6 2.9 8.1 7 10 4.1-1.9 7-5.4 7-10V6l-7-3Z"
