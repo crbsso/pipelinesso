@@ -33,7 +33,7 @@ export async function updateSession(request: NextRequest) {
           });
         },
       },
-    }
+    },
   );
 
   const { data, error } = await supabase.auth.getClaims();
@@ -45,6 +45,7 @@ export async function updateSession(request: NextRequest) {
   const isPublicRoute =
     pathname === "/signin" ||
     pathname === "/esqueci-senha" ||
+    pathname === "/solicitar-acesso" ||
     pathname.startsWith("/auth/confirm");
 
   const isApiRoute = pathname.startsWith("/api/");
