@@ -106,3 +106,7 @@ portal_backup/
 .edge_sso_playwright/
 _teste_download_avcb/
 erro_download_avcb_playwright.png
+
+# Dados gerados pelo pipeline
+data/
+*.pyc
