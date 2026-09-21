@@ -102,3 +102,7 @@ build/
 .cache/
 # Backup local do Portal
 portal_backup/
+# Playwright / testes locais
+.edge_sso_playwright/
+_teste_download_avcb/
+erro_download_avcb_playwright.png

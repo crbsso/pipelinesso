@@ -91,6 +91,11 @@ const navItems: NavItem[] = [
 
 const othersItems: NavItem[] = [
   {
+    icon: <PageIcon />,
+    name: "Solicitações de acesso",
+    path: "/gestao/solicitacoes-acesso",
+  },
+  {
     icon: <UserCircleIcon />,
     name: "Usuários",
     path: "/gestao/usuarios",
@@ -353,7 +358,6 @@ const AppSidebar: React.FC = () => {
         setIsHovered(false)
       }
     >
-      {/* BRANDING */}
       <div
         className={`flex py-8 ${
           !isExpanded && !isHovered
@@ -406,7 +410,6 @@ const AppSidebar: React.FC = () => {
       <div className="flex flex-col overflow-y-auto duration-300 ease-linear no-scrollbar">
         <nav className="mb-6">
           <div className="flex flex-col gap-6">
-
             <div>
               <h2
                 className={`mb-4 flex text-xs uppercase leading-[20px] text-gray-400 ${
