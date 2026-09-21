@@ -23,7 +23,7 @@ if not exist "%PYTHON%" (
 echo Iniciando pipeline...
 echo.
 
-"%PYTHON%" "%PROJETO%\executar_pipeline.py"
+"%PYTHON%" "%PROJETO%\backend\avcb\executar_pipeline.py"
 
 set "CODIGO_ERRO=%ERRORLEVEL%"
 

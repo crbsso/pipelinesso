@@ -11,10 +11,11 @@ from docx import Document
 # CONFIGURAÇÕES
 # =========================================================
 
-PASTA_PROJETO = Path(__file__).resolve().parent
+PASTA_PROJETO = Path(__file__).resolve().parents[2]
 
 ARQUIVO_AVCB = (
     PASTA_PROJETO
+    / "data"
     / "bronze"
     / "avcb"
     / "Controle de AVCB.xlsx"
@@ -22,6 +23,7 @@ ARQUIVO_AVCB = (
 
 PASTA_RELATORIOS = (
     PASTA_PROJETO
+    / "data"
     / "relatorios"
 )
 

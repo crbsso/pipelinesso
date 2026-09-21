@@ -8,10 +8,11 @@ from validar_qualidade import validar_avcb
 # CONFIGURAÇÕES
 # =========================================================
 
-PASTA_PROJETO = Path(__file__).resolve().parent
+PASTA_PROJETO = Path(__file__).resolve().parents[2]
 
 ARQUIVO_BRONZE = (
     PASTA_PROJETO
+    / "data"
     / "bronze"
     / "avcb"
     / "Controle de AVCB.xlsx"
@@ -19,6 +20,7 @@ ARQUIVO_BRONZE = (
 
 PASTA_PRATA = (
     PASTA_PROJETO
+    / "data"
     / "prata"
     / "avcb"
 )

@@ -8,10 +8,11 @@ import pandas as pd
 # CONFIGURAÇÕES
 # =========================================================
 
-PASTA_PROJETO = Path(__file__).resolve().parent
+PASTA_PROJETO = Path(__file__).resolve().parents[2]
 
 ARQUIVO_PRATA = (
     PASTA_PROJETO
+    / "data"
     / "prata"
     / "avcb"
     / "avcb_prata.xlsx"
@@ -19,6 +20,7 @@ ARQUIVO_PRATA = (
 
 PASTA_OURO = (
     PASTA_PROJETO
+    / "data"
     / "ouro"
     / "avcb"
 )

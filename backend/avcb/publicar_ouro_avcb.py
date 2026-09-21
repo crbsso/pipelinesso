@@ -6,10 +6,11 @@ from dotenv import load_dotenv
 from supabase import create_client
 
 
-PASTA_PROJETO = Path(__file__).resolve().parent
+PASTA_PROJETO = Path(__file__).resolve().parents[2]
 
 ARQUIVO_OURO = (
     PASTA_PROJETO
+    / "data"
     / "ouro"
     / "avcb"
     / "mart_avcb.xlsx"

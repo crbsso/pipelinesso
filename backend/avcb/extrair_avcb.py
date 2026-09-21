@@ -24,7 +24,7 @@ from playwright.sync_api import (
 # CONFIGURAÇÕES DO PROJETO
 # =========================================================
 
-PASTA_PROJETO = Path(__file__).resolve().parent
+PASTA_PROJETO = Path(__file__).resolve().parents[2]
 
 
 # =========================================================
@@ -53,6 +53,7 @@ if not URL_AVCB:
 
 PASTA_BRONZE = (
     PASTA_PROJETO
+    / "data"
     / "bronze"
     / "avcb"
 )
