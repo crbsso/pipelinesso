@@ -1,0 +1,1256 @@
+﻿from pathlib import Path
+from collections import Counter, defaultdict
+from datetime import datetime, date
+import csv
+import os
+import re
+import unicodedata
+
+from openpyxl import load_workbook, Workbook
+
+
+RAIZ = Path(__file__).resolve().parents[2]
+
+ARQUIVO_BRONZE = (
+    RAIZ
+    / "data"
+    / "bronze"
+    / "inspecoes"
+    / "quantidade"
+    / "Detalle_Checklist.xlsx"
+)
+
+ARQUIVO_CONFIG = (
+    RAIZ
+    / "backend"
+    / "inspecoes"
+    / "config"
+    / "areas_escopo.csv"
+)
+
+PASTA_PRATA = (
+    RAIZ
+    / "data"
+    / "prata"
+    / "inspecoes"
+    / "quantidade"
+)
+
+ARQUIVO_PRATA = (
+    PASTA_PRATA
+    / "Inspecoes_Quantidade.xlsx"
+)
+
+ARQUIVO_TEMP = (
+    PASTA_PRATA
+    / "Inspecoes_Quantidade_novo.xlsx"
+)
+
+
+def normalizar(valor):
+
+    if valor is None:
+        return ""
+
+    texto = str(valor).strip()
+
+    texto = unicodedata.normalize(
+        "NFKD",
+        texto,
+    )
+
+    texto = "".join(
+        caractere
+        for caractere in texto
+        if not unicodedata.combining(caractere)
+    )
+
+    return (
+        texto
+        .lower()
+        .strip()
+    )
+
+
+def slug(valor):
+
+    texto = normalizar(valor)
+
+    texto = re.sub(
+        r"[^a-z0-9]+",
+        "_",
+        texto,
+    )
+
+    return texto.strip("_")
+
+
+def id_normalizado(valor):
+
+    if valor is None:
+        return ""
+
+    if isinstance(valor, float):
+
+        if valor.is_integer():
+            return str(int(valor))
+
+    if isinstance(valor, int):
+        return str(valor)
+
+    texto = str(valor).strip()
+
+    if texto.endswith(".0"):
+
+        parte = texto[:-2]
+
+        if parte.isdigit():
+            return parte
+
+    return texto
+
+
+def converter_data(valor):
+
+    if valor is None:
+        return None
+
+    if isinstance(valor, datetime):
+        return valor
+
+    if isinstance(valor, date):
+
+        return datetime(
+            valor.year,
+            valor.month,
+            valor.day,
+        )
+
+    texto = str(valor).strip()
+
+    formatos = [
+        "%Y-%m-%d %H:%M:%S",
+        "%Y-%m-%d",
+        "%d/%m/%Y %H:%M:%S",
+        "%d/%m/%Y",
+    ]
+
+    for formato in formatos:
+
+        try:
+            return datetime.strptime(
+                texto,
+                formato,
+            )
+        except ValueError:
+            continue
+
+    return None
+
+
+def carregar_dimensao():
+
+    if not ARQUIVO_CONFIG.exists():
+
+        raise FileNotFoundError(
+            f"Dimensao nao encontrada: "
+            f"{ARQUIVO_CONFIG}"
+        )
+
+    dimensao = {}
+
+    with ARQUIVO_CONFIG.open(
+        "r",
+        encoding="utf-8-sig",
+        newline="",
+    ) as arquivo:
+
+        leitor = csv.DictReader(
+            arquivo,
+            delimiter=";",
+        )
+
+        for linha in leitor:
+
+            if (
+                str(
+                    linha.get(
+                        "ativo",
+                        "",
+                    )
+                ).strip().upper()
+                != "SIM"
+            ):
+                continue
+
+            chave = (
+                linha.get(
+                    "chave_normalizada",
+                    ""
+                )
+                or normalizar(
+                    linha.get(
+                        "area_organizacional",
+                        ""
+                    )
+                )
+            )
+
+            chave = normalizar(
+                chave
+            )
+
+            escopo = (
+                linha.get(
+                    "escopo",
+                    ""
+                )
+                .strip()
+                .upper()
+            )
+
+            if escopo not in {
+                "BRASIL",
+                "FORA_BRASIL",
+            }:
+
+                raise RuntimeError(
+                    "Escopo invalido na dimensao: "
+                    f"{escopo!r}"
+                )
+
+            if chave in dimensao:
+
+                if (
+                    dimensao[chave]
+                    != escopo
+                ):
+
+                    raise RuntimeError(
+                        "Classificacao conflitante "
+                        f"para area: {chave}"
+                    )
+
+            dimensao[chave] = escopo
+
+    if not dimensao:
+
+        raise RuntimeError(
+            "Dimensao de areas esta vazia."
+        )
+
+    return dimensao
+
+
+def ler_bronze():
+
+    if not ARQUIVO_BRONZE.exists():
+
+        raise FileNotFoundError(
+            f"Bronze nao encontrada: "
+            f"{ARQUIVO_BRONZE}"
+        )
+
+    wb = load_workbook(
+        ARQUIVO_BRONZE,
+        read_only=True,
+        data_only=True,
+    )
+
+    ws = wb[
+        wb.sheetnames[0]
+    ]
+
+    linha_cabecalho = None
+    cabecalho = None
+
+    for numero_linha, linha in enumerate(
+        ws.iter_rows(
+            min_row=1,
+            max_row=10,
+            values_only=True,
+        ),
+        start=1,
+    ):
+
+        valores = [
+            normalizar(valor)
+            for valor in linha
+        ]
+
+        if "id resposta" in valores:
+
+            linha_cabecalho = (
+                numero_linha
+            )
+
+            cabecalho = [
+                str(valor).strip()
+                if valor is not None
+                else ""
+                for valor in linha
+            ]
+
+            break
+
+    if linha_cabecalho is None:
+
+        wb.close()
+
+        raise RuntimeError(
+            "Cabecalho real da Bronze "
+            "nao foi localizado."
+        )
+
+    colunas = [
+        slug(coluna)
+        for coluna in cabecalho
+    ]
+
+    obrigatorias = {
+        "id_resposta",
+        "nome_formulario",
+        "data_da_inspecao",
+        "area_organizacional",
+        "local",
+        "criador_de_checklist",
+    }
+
+    faltantes = (
+        obrigatorias
+        - set(colunas)
+    )
+
+    if faltantes:
+
+        wb.close()
+
+        raise RuntimeError(
+            "Colunas obrigatorias ausentes: "
+            + ", ".join(
+                sorted(faltantes)
+            )
+        )
+
+    registros = []
+
+    for numero_linha, linha in enumerate(
+        ws.iter_rows(
+            min_row=linha_cabecalho + 1,
+            values_only=True,
+        ),
+        start=linha_cabecalho + 1,
+    ):
+
+        registro = {
+            coluna: (
+                linha[indice]
+                if indice < len(linha)
+                else None
+            )
+            for indice, coluna
+            in enumerate(colunas)
+        }
+
+        registro[
+            "_linha_bronze"
+        ] = numero_linha
+
+        registros.append(
+            registro
+        )
+
+    wb.close()
+
+    return (
+        colunas,
+        registros,
+    )
+
+
+def extrair_prefixo_formulario(
+    formulario,
+):
+
+    texto = str(
+        formulario
+        or ""
+    ).strip()
+
+    match = re.match(
+        r"^\s*([A-Za-z]{2,5})\s*-\s+",
+        texto,
+    )
+
+    if not match:
+        return ""
+
+    return (
+        match
+        .group(1)
+        .upper()
+    )
+
+
+def carregar_regras_compostas():
+
+    arquivo_regras = (
+        RAIZ
+        / "backend"
+        / "inspecoes"
+        / "config"
+        / "regras_escopo.csv"
+    )
+
+    if not arquivo_regras.exists():
+
+        raise FileNotFoundError(
+            "Arquivo de regras compostas "
+            f"nao encontrado: {arquivo_regras}"
+        )
+
+    regras = {}
+
+    with arquivo_regras.open(
+        "r",
+        encoding="utf-8-sig",
+        newline="",
+    ) as arquivo:
+
+        leitor = csv.DictReader(
+            arquivo,
+            delimiter=";",
+        )
+
+        for linha in leitor:
+
+            if (
+                str(
+                    linha.get(
+                        "ativo",
+                        ""
+                    )
+                )
+                .strip()
+                .upper()
+                != "SIM"
+            ):
+                continue
+
+            chave_area = normalizar(
+                linha.get(
+                    "chave_area_normalizada",
+                    ""
+                )
+                or
+                linha.get(
+                    "area_organizacional",
+                    ""
+                )
+            )
+
+            prefixo = (
+                str(
+                    linha.get(
+                        "prefixo_formulario",
+                        ""
+                    )
+                )
+                .strip()
+                .upper()
+            )
+
+            escopo = (
+                str(
+                    linha.get(
+                        "escopo",
+                        ""
+                    )
+                )
+                .strip()
+                .upper()
+            )
+
+            if not chave_area:
+                raise RuntimeError(
+                    "Regra composta sem area."
+                )
+
+            if not prefixo:
+                raise RuntimeError(
+                    "Regra composta sem prefixo."
+                )
+
+            if escopo not in {
+                "BRASIL",
+                "FORA_BRASIL",
+            }:
+
+                raise RuntimeError(
+                    "Escopo invalido em "
+                    "regras_escopo.csv: "
+                    f"{escopo!r}"
+                )
+
+            chave = (
+                chave_area,
+                prefixo,
+            )
+
+            if chave in regras:
+
+                if (
+                    regras[chave]
+                    != escopo
+                ):
+
+                    raise RuntimeError(
+                        "Regra composta conflitante: "
+                        f"{chave}"
+                    )
+
+            regras[
+                chave
+            ] = escopo
+
+    if not regras:
+
+        raise RuntimeError(
+            "Nenhuma regra composta ativa."
+        )
+
+    return regras
+
+
+def classificar_registros(
+    registros,
+    dimensao,
+    regras_compostas,
+):
+
+    desconhecidas = Counter()
+
+    exemplos = defaultdict(
+        set
+    )
+
+    classificadas_area = 0
+    classificadas_regra = 0
+
+    for registro in registros:
+
+        area = registro.get(
+            "area_organizacional"
+        )
+
+        formulario = registro.get(
+            "nome_formulario"
+        )
+
+        chave_area = normalizar(
+            area
+        )
+
+        prefixo = (
+            extrair_prefixo_formulario(
+                formulario
+            )
+        )
+
+        registro[
+            "_prefixo_formulario"
+        ] = prefixo
+
+        # ---------------------------------------------
+        # REGRA 1
+        # Area historicamente validada pelo filtro
+        # oficial do Prevsys.
+        # ---------------------------------------------
+
+        if chave_area in dimensao:
+
+            registro[
+                "_escopo_calculado"
+            ] = dimensao[
+                chave_area
+            ]
+
+            registro[
+                "_fonte_classificacao"
+            ] = "AREA_HISTORICA"
+
+            classificadas_area += 1
+
+            continue
+
+        # ---------------------------------------------
+        # REGRA 2
+        # Area nova somente entra se existir regra
+        # composta explicitamente validada.
+        # ---------------------------------------------
+
+        chave_regra = (
+            chave_area,
+            prefixo,
+        )
+
+        if (
+            prefixo
+            and
+            chave_regra
+            in regras_compostas
+        ):
+
+            registro[
+                "_escopo_calculado"
+            ] = regras_compostas[
+                chave_regra
+            ]
+
+            registro[
+                "_fonte_classificacao"
+            ] = "AREA_PREFIXO"
+
+            classificadas_regra += 1
+
+            continue
+
+        # ---------------------------------------------
+        # QUALITY GATE
+        # ---------------------------------------------
+
+        area_exibicao = (
+            str(area).strip()
+            if area is not None
+            else "<AREA VAZIA>"
+        )
+
+        prefixo_exibicao = (
+            prefixo
+            or "<SEM PREFIXO>"
+        )
+
+        chave_erro = (
+            area_exibicao,
+            prefixo_exibicao,
+        )
+
+        desconhecidas[
+            chave_erro
+        ] += 1
+
+        exemplos[
+            chave_erro
+        ].add(
+            str(
+                formulario
+                or ""
+            )
+        )
+
+    if desconhecidas:
+
+        print()
+        print("=" * 70)
+        print("QUALITY GATE BLOQUEADO")
+        print("=" * 70)
+
+        print(
+            "Foram encontradas combinacoes "
+            "sem classificacao:"
+        )
+
+        for (
+            area_prefixo,
+            quantidade,
+        ) in desconhecidas.most_common():
+
+            area, prefixo = (
+                area_prefixo
+            )
+
+            print()
+
+            print(
+                f"Area: {area}"
+            )
+
+            print(
+                f"Prefixo: {prefixo}"
+            )
+
+            print(
+                f"Registros: {quantidade}"
+            )
+
+            for formulario in sorted(
+                exemplos[
+                    area_prefixo
+                ]
+            )[:5]:
+
+                if formulario:
+
+                    print(
+                        f"  - {formulario}"
+                    )
+
+        print()
+
+        print(
+            "A Prata NAO sera atualizada."
+        )
+
+        raise RuntimeError(
+            "Existem combinacoes de "
+            "area/prefixo nao classificadas."
+        )
+
+    print(
+        "Quality Gate de escopo: APROVADO"
+    )
+
+    print(
+        "Classificados por area historica: "
+        f"{classificadas_area}"
+    )
+
+    print(
+        "Classificados por regra "
+        "area + prefixo: "
+        f"{classificadas_regra}"
+    )
+
+
+def selecionar_brasil(
+    registros,
+):
+
+    brasil = []
+    fora = 0
+
+    for registro in registros:
+
+        escopo = registro.get(
+            "_escopo_calculado"
+        )
+
+        if escopo == "BRASIL":
+
+            brasil.append(
+                registro
+            )
+
+        elif escopo == "FORA_BRASIL":
+
+            fora += 1
+
+        else:
+
+            raise RuntimeError(
+                "Registro sem escopo calculado."
+            )
+
+    return brasil, fora
+
+
+def deduplicar(
+    registros,
+):
+
+    grupos = defaultdict(list)
+
+    for registro in registros:
+
+        identificador = (
+            id_normalizado(
+                registro.get(
+                    "id_resposta"
+                )
+            )
+        )
+
+        if not identificador:
+
+            raise RuntimeError(
+                "Registro Brasil sem "
+                "ID resposta encontrado na "
+                f"linha Bronze "
+                f"{registro['_linha_bronze']}."
+            )
+
+        registro[
+            "id_resposta"
+        ] = identificador
+
+        grupos[
+            identificador
+        ].append(
+            registro
+        )
+
+    campos_criticos = [
+        "nome_formulario",
+        "contrato",
+        "tipo_de_registro",
+        "data_da_inspecao",
+        "area_organizacional",
+        "local",
+        "empresa",
+    ]
+
+    conflitos = []
+    resultado = []
+
+    ids_duplicados = 0
+    linhas_duplicadas = 0
+
+    for identificador, grupo in (
+        grupos.items()
+    ):
+
+        if len(grupo) > 1:
+
+            ids_duplicados += 1
+
+            linhas_duplicadas += (
+                len(grupo) - 1
+            )
+
+            for campo in campos_criticos:
+
+                valores = {
+                    normalizar(
+                        registro.get(
+                            campo
+                        )
+                    )
+                    for registro in grupo
+                }
+
+                if len(valores) > 1:
+
+                    conflitos.append(
+                        (
+                            identificador,
+                            campo,
+                            valores,
+                        )
+                    )
+
+        escolhido = dict(
+            grupo[0]
+        )
+
+        escolhido[
+            "ocorrencias_id_origem"
+        ] = len(grupo)
+
+        escolhido[
+            "duplicado_origem"
+        ] = (
+            "SIM"
+            if len(grupo) > 1
+            else "NAO"
+        )
+
+        resultado.append(
+            escolhido
+        )
+
+    if conflitos:
+
+        print()
+        print("=" * 70)
+        print("QUALITY GATE DE DUPLICIDADE BLOQUEADO")
+        print("=" * 70)
+
+        for (
+            identificador,
+            campo,
+            valores,
+        ) in conflitos[:20]:
+
+            print(
+                f"ID {identificador} | "
+                f"campo {campo}: "
+                f"{sorted(valores)}"
+            )
+
+        raise RuntimeError(
+            "Existem IDs duplicados com "
+            "dados criticos conflitantes."
+        )
+
+    print(
+        "Quality Gate de duplicidade: APROVADO"
+    )
+
+    print(
+        f"IDs duplicados encontrados: "
+        f"{ids_duplicados}"
+    )
+
+    print(
+        f"Linhas excedentes removidas: "
+        f"{linhas_duplicadas}"
+    )
+
+    return resultado
+
+
+def preparar_prata(
+    registros,
+):
+
+    resultado = []
+
+    for registro in registros:
+
+        novo = {
+            chave: valor
+            for chave, valor
+            in registro.items()
+            if not chave.startswith("_")
+        }
+
+        data_inspecao = converter_data(
+            registro.get(
+                "data_da_inspecao"
+            )
+        )
+
+        novo[
+            "pais_escopo"
+        ] = "BRASIL"
+
+        novo[
+            "prefixo_formulario"
+        ] = registro.get(
+            "_prefixo_formulario",
+            "",
+        )
+
+        novo[
+            "fonte_classificacao_escopo"
+        ] = registro.get(
+            "_fonte_classificacao",
+            "",
+        )
+
+        novo[
+            "data_inspecao_normalizada"
+        ] = data_inspecao
+
+        if data_inspecao:
+
+            novo[
+                "ano_inspecao"
+            ] = data_inspecao.year
+
+            novo[
+                "mes_inspecao"
+            ] = data_inspecao.month
+
+            novo[
+                "ano_mes"
+            ] = (
+                f"{data_inspecao.year:04d}-"
+                f"{data_inspecao.month:02d}"
+            )
+
+        else:
+
+            novo[
+                "ano_inspecao"
+            ] = None
+
+            novo[
+                "mes_inspecao"
+            ] = None
+
+            novo[
+                "ano_mes"
+            ] = None
+
+        novo[
+            "quantidade_inspecao"
+        ] = 1
+
+        resultado.append(
+            novo
+        )
+
+    return resultado
+
+
+def escrever_prata(
+    registros,
+):
+
+    PASTA_PRATA.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    if ARQUIVO_TEMP.exists():
+        ARQUIVO_TEMP.unlink()
+
+    wb = Workbook()
+
+    ws = wb.active
+    ws.title = "inspecoes"
+
+    if not registros:
+
+        raise RuntimeError(
+            "Nenhum registro Brasil "
+            "foi encontrado."
+        )
+
+    colunas = list(
+        registros[0].keys()
+    )
+
+    ws.append(
+        colunas
+    )
+
+    for registro in registros:
+
+        ws.append(
+            [
+                registro.get(
+                    coluna
+                )
+                for coluna in colunas
+            ]
+        )
+
+    ws.freeze_panes = "A2"
+
+    ws.auto_filter.ref = (
+        ws.dimensions
+    )
+
+    wb.save(
+        ARQUIVO_TEMP
+    )
+
+    wb.close()
+
+    return colunas
+
+
+def validar_prata(
+    quantidade_esperada,
+):
+
+    wb = load_workbook(
+        ARQUIVO_TEMP,
+        read_only=True,
+        data_only=True,
+    )
+
+    ws = wb[
+        wb.sheetnames[0]
+    ]
+
+    linhas = list(
+        ws.iter_rows(
+            values_only=True
+        )
+    )
+
+    wb.close()
+
+    if not linhas:
+
+        raise RuntimeError(
+            "Prata temporaria esta vazia."
+        )
+
+    cabecalho = [
+        str(valor)
+        if valor is not None
+        else ""
+        for valor in linhas[0]
+    ]
+
+    dados = linhas[1:]
+
+    if (
+        len(dados)
+        != quantidade_esperada
+    ):
+
+        raise RuntimeError(
+            "Quantidade da Prata diverge "
+            "da quantidade esperada."
+        )
+
+    if "id_resposta" not in cabecalho:
+
+        raise RuntimeError(
+            "Prata sem coluna id_resposta."
+        )
+
+    indice_id = cabecalho.index(
+        "id_resposta"
+    )
+
+    ids = [
+        id_normalizado(
+            linha[indice_id]
+        )
+        for linha in dados
+    ]
+
+    if len(ids) != len(set(ids)):
+
+        raise RuntimeError(
+            "A Prata ainda possui "
+            "IDs resposta duplicados."
+        )
+
+    if "pais_escopo" not in cabecalho:
+
+        raise RuntimeError(
+            "Prata sem coluna pais_escopo."
+        )
+
+    indice_pais = cabecalho.index(
+        "pais_escopo"
+    )
+
+    paises = {
+        str(
+            linha[indice_pais]
+        ).strip().upper()
+        for linha in dados
+    }
+
+    if paises != {"BRASIL"}:
+
+        raise RuntimeError(
+            "A Prata contem registros "
+            "fora do escopo Brasil."
+        )
+
+    print(
+        "Validacao da Prata: APROVADA"
+    )
+
+
+def atualizar_prata():
+
+    try:
+
+        dimensao = carregar_dimensao()
+
+        regras_compostas = (
+            carregar_regras_compostas()
+        )
+
+        print(
+            "Areas classificadas na dimensao: "
+            f"{len(dimensao)}"
+        )
+
+        print(
+            "Regras compostas ativas: "
+            f"{len(regras_compostas)}"
+        )
+
+        (
+            colunas_bronze,
+            registros,
+        ) = ler_bronze()
+
+        print(
+            "Registros recebidos da Bronze: "
+            f"{len(registros)}"
+        )
+
+        classificar_registros(
+            registros,
+            dimensao,
+            regras_compostas,
+        )
+
+        brasil, fora = selecionar_brasil(
+            registros
+        )
+
+        print(
+            "Registros classificados BRASIL: "
+            f"{len(brasil)}"
+        )
+
+        print(
+            "Registros classificados FORA_BRASIL: "
+            f"{fora}"
+        )
+
+        deduplicados = deduplicar(
+            brasil
+        )
+
+        print(
+            "Inspecoes Brasil unicas: "
+            f"{len(deduplicados)}"
+        )
+
+        prata = preparar_prata(
+            deduplicados
+        )
+
+        escrever_prata(
+            prata
+        )
+
+        validar_prata(
+            len(prata)
+        )
+
+        os.replace(
+            ARQUIVO_TEMP,
+            ARQUIVO_PRATA,
+        )
+
+        print()
+
+        print("=" * 70)
+        print(
+            "CAMADA PRATA ATUALIZADA COM SUCESSO"
+        )
+        print("=" * 70)
+
+        print(
+            f"Arquivo: {ARQUIVO_PRATA}"
+        )
+
+        print(
+            f"Inspecoes Brasil: {len(prata)}"
+        )
+
+    except Exception:
+
+        if ARQUIVO_TEMP.exists():
+
+            try:
+                ARQUIVO_TEMP.unlink()
+            except Exception:
+                pass
+
+        raise
+
+
+if __name__ == "__main__":
+
+    print("=" * 70)
+    print("TRATAMENTO INSPECOES - QUANTIDADE")
+    print("=" * 70)
+    print()
+
+    atualizar_prata()
