@@ -1,0 +1,24 @@
+﻿cod_situacao;descricao_situacao;origem
+A;Ativo;TOTVS_RM
+C;Contrato de Trabalho Suspenso;TOTVS_RM
+D;Demitido;TOTVS_RM
+E;Licença Mater.;TOTVS_RM
+F;Férias;TOTVS_RM
+G;Recesso Remunerado de Estagio;TOTVS_RM
+I;Apos. por Incapacidade Permanente;TOTVS_RM
+K;Cessão / Requisição;TOTVS_RM
+L;Licença s/venc;TOTVS_RM
+M;Serv.Militar;TOTVS_RM
+N;Mandato Sindical Ônus do Empregador;TOTVS_RM
+O;Doença Ocupacional;TOTVS_RM
+P;Af.Previdência;TOTVS_RM
+Q;Prisão / Cárcere;TOTVS_RM
+R;Licença Remun.;TOTVS_RM
+S;Mandato Sindical Ônus do Sindicato;TOTVS_RM
+T;Af.Ac.Trabalho;TOTVS_RM
+U;Outros;TOTVS_RM
+V;Aviso Prévio;TOTVS_RM
+W;Licença Mater. Compl. 180 dias;TOTVS_RM
+X;C/Dem.no mês;TOTVS_RM
+Y;Licença Paternidade;TOTVS_RM
+Z;Admissão prox.mês;TOTVS_RM
