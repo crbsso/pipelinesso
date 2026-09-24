@@ -2,6 +2,7 @@
 from collections import Counter, defaultdict
 from datetime import datetime, date
 import csv
+import json
 import os
 import re
 import unicodedata
@@ -44,6 +45,14 @@ ARQUIVO_PRATA = (
 ARQUIVO_TEMP = (
     PASTA_PRATA
     / "Inspecoes_Quantidade_novo.xlsx"
+)
+
+ARQUIVO_IDENTIDADES_COLABORADORES = (
+    RAIZ
+    / "backend"
+    / "inspecoes"
+    / "config"
+    / "identidades_colaboradores.json"
 )
 
 
@@ -146,6 +155,270 @@ def converter_data(valor):
             continue
 
     return None
+
+
+def extrair_identificador_criador(valor):
+
+    texto = str(
+        valor or ""
+    ).strip()
+
+    if not texto:
+
+        raise RuntimeError(
+            "Criador de checklist vazio."
+        )
+
+    identificador = (
+        texto
+        .split(
+            maxsplit=1
+        )[0]
+        .strip()
+        .upper()
+    )
+
+    if "-" not in identificador:
+
+        raise RuntimeError(
+            "Formato inesperado de criador: "
+            f"{texto}"
+        )
+
+    return identificador
+
+
+def carregar_identidades_colaboradores():
+
+    if not ARQUIVO_IDENTIDADES_COLABORADORES.exists():
+
+        raise FileNotFoundError(
+            "Configuracao de identidades "
+            "de Inspecoes nao encontrada: "
+            f"{ARQUIVO_IDENTIDADES_COLABORADORES}"
+        )
+
+    with ARQUIVO_IDENTIDADES_COLABORADORES.open(
+        "r",
+        encoding="utf-8",
+    ) as arquivo:
+
+        configuracao = json.load(
+            arquivo
+        )
+
+    if configuracao.get(
+        "versao"
+    ) != 1:
+
+        raise RuntimeError(
+            "Versao invalida da configuracao "
+            "de identidades."
+        )
+
+    sistema_origem = str(
+        configuracao.get(
+            "sistema_origem",
+            "",
+        )
+    ).strip().upper()
+
+    if sistema_origem != "INSPECOES":
+
+        raise RuntimeError(
+            "sistema_origem invalido "
+            "na configuracao de identidades: "
+            f"{sistema_origem}"
+        )
+
+    registros = configuracao.get(
+        "identidades"
+    )
+
+    if not isinstance(
+        registros,
+        list,
+    ):
+
+        raise RuntimeError(
+            "Campo identidades deve ser "
+            "uma lista."
+        )
+
+    obrigatorias = {
+        "codigo_inspecao",
+        "cod_colaborador",
+        "nome_exibicao",
+        "status_vinculo",
+        "metodo_vinculo",
+    }
+
+    identidades = {}
+
+    for item in registros:
+
+        if not isinstance(
+            item,
+            dict,
+        ):
+
+            raise RuntimeError(
+                "Identidade invalida "
+                "na configuracao."
+            )
+
+        faltantes = (
+            obrigatorias
+            - set(
+                item.keys()
+            )
+        )
+
+        if faltantes:
+
+            raise RuntimeError(
+                "Campos ausentes na identidade: "
+                + ", ".join(
+                    sorted(
+                        faltantes
+                    )
+                )
+            )
+
+        codigo_inspecao = str(
+            item.get(
+                "codigo_inspecao",
+                "",
+            )
+        ).strip().upper()
+
+        cod_colaborador = str(
+            item.get(
+                "cod_colaborador",
+                "",
+            )
+        ).strip()
+
+        nome_exibicao = str(
+            item.get(
+                "nome_exibicao",
+                "",
+            )
+        ).strip()
+
+        status_vinculo = str(
+            item.get(
+                "status_vinculo",
+                "",
+            )
+        ).strip().upper()
+
+        metodo_vinculo = str(
+            item.get(
+                "metodo_vinculo",
+                "",
+            )
+        ).strip().upper()
+
+        if not codigo_inspecao:
+
+            raise RuntimeError(
+                "codigo_inspecao vazio "
+                "na configuracao."
+            )
+
+        if codigo_inspecao in identidades:
+
+            raise RuntimeError(
+                "codigo_inspecao duplicado: "
+                f"{codigo_inspecao}"
+            )
+
+        if status_vinculo == "VINCULADO":
+
+            if not cod_colaborador:
+
+                raise RuntimeError(
+                    "Identidade VINCULADA sem "
+                    "cod_colaborador: "
+                    f"{codigo_inspecao}"
+                )
+
+            if not nome_exibicao:
+
+                raise RuntimeError(
+                    "Identidade VINCULADA sem "
+                    "nome_exibicao: "
+                    f"{codigo_inspecao}"
+                )
+
+            if metodo_vinculo not in {
+                "EXATO",
+                "SIMILARIDADE_VALIDADA",
+            }:
+
+                raise RuntimeError(
+                    "Metodo invalido para "
+                    "identidade VINCULADA: "
+                    f"{codigo_inspecao} -> "
+                    f"{metodo_vinculo}"
+                )
+
+        elif status_vinculo == "NAO_VINCULADO":
+
+            if cod_colaborador:
+
+                raise RuntimeError(
+                    "Identidade NAO_VINCULADA "
+                    "possui cod_colaborador: "
+                    f"{codigo_inspecao}"
+                )
+
+            if nome_exibicao:
+
+                raise RuntimeError(
+                    "Identidade NAO_VINCULADA "
+                    "possui nome_exibicao: "
+                    f"{codigo_inspecao}"
+                )
+
+            if metodo_vinculo != "NAO_VINCULADO":
+
+                raise RuntimeError(
+                    "Metodo invalido para "
+                    "identidade NAO_VINCULADA: "
+                    f"{codigo_inspecao}"
+                )
+
+        else:
+
+            raise RuntimeError(
+                "status_vinculo invalido: "
+                f"{codigo_inspecao} -> "
+                f"{status_vinculo}"
+            )
+
+        identidades[
+            codigo_inspecao
+        ] = {
+            "cod_colaborador":
+                cod_colaborador,
+            "nome_exibicao":
+                nome_exibicao,
+            "status_vinculo":
+                status_vinculo,
+            "metodo_vinculo":
+                metodo_vinculo,
+        }
+
+    if not identidades:
+
+        raise RuntimeError(
+            "Nenhuma identidade cadastrada "
+            "para Inspecoes."
+        )
+
+    return identidades
 
 
 def carregar_dimensao():
@@ -901,6 +1174,7 @@ def deduplicar(
 
 def preparar_prata(
     registros,
+    identidades_colaboradores,
 ):
 
     resultado = []
@@ -913,6 +1187,44 @@ def preparar_prata(
             in registro.items()
             if not chave.startswith("_")
         }
+
+        identificador_criador = (
+            extrair_identificador_criador(
+                registro.get(
+                    "criador_de_checklist"
+                )
+            )
+        )
+
+        identidade = (
+            identidades_colaboradores.get(
+                identificador_criador
+            )
+        )
+
+        if identidade is None:
+
+            raise RuntimeError(
+                "Criador ainda nao cadastrado "
+                "em identidades_colaboradores.json: "
+                f"{identificador_criador}"
+            )
+
+        novo[
+            "identificador_criador"
+        ] = identificador_criador
+
+        novo[
+            "cod_colaborador"
+        ] = identidade[
+            "cod_colaborador"
+        ]
+
+        novo[
+            "status_vinculo_colaborador"
+        ] = identidade[
+            "status_vinculo"
+        ]
 
         data_inspecao = converter_data(
             registro.get(
@@ -1137,6 +1449,154 @@ def validar_prata(
             "fora do escopo Brasil."
         )
 
+    # =====================================================
+    # VALIDACAO DA IDENTIDADE DO COLABORADOR
+    # =====================================================
+
+    colunas_identidade = {
+        "identificador_criador",
+        "cod_colaborador",
+        "status_vinculo_colaborador",
+    }
+
+    faltantes_identidade = (
+        colunas_identidade
+        - set(cabecalho)
+    )
+
+    if faltantes_identidade:
+
+        raise RuntimeError(
+            "Prata sem colunas de identidade: "
+            + ", ".join(
+                sorted(
+                    faltantes_identidade
+                )
+            )
+        )
+
+    indice_identificador = cabecalho.index(
+        "identificador_criador"
+    )
+
+    indice_colaborador = cabecalho.index(
+        "cod_colaborador"
+    )
+
+    indice_status = cabecalho.index(
+        "status_vinculo_colaborador"
+    )
+
+    vinculadas = 0
+    nao_vinculadas = 0
+
+    for numero_linha, linha in enumerate(
+        dados,
+        start=2,
+    ):
+
+        identificador = str(
+            linha[indice_identificador]
+            or ""
+        ).strip().upper()
+
+        cod_colaborador = str(
+            linha[indice_colaborador]
+            or ""
+        ).strip()
+
+        status = str(
+            linha[indice_status]
+            or ""
+        ).strip().upper()
+
+        if not identificador:
+
+            raise RuntimeError(
+                "Prata possui identificador_criador "
+                "vazio na linha "
+                f"{numero_linha}."
+            )
+
+        if not re.fullmatch(
+            r"[0-9]+-[0-9K]",
+            identificador,
+        ):
+
+            raise RuntimeError(
+                "identificador_criador invalido "
+                "na linha "
+                f"{numero_linha}: "
+                f"{identificador}"
+            )
+
+        if status == "VINCULADO":
+
+            vinculadas += 1
+
+            if not cod_colaborador:
+
+                raise RuntimeError(
+                    "Registro VINCULADO sem "
+                    "cod_colaborador na linha "
+                    f"{numero_linha}."
+                )
+
+            if not re.fullmatch(
+                r"[0-9]+-[0-9]+",
+                cod_colaborador,
+            ):
+
+                raise RuntimeError(
+                    "cod_colaborador invalido "
+                    "na linha "
+                    f"{numero_linha}: "
+                    f"{cod_colaborador}"
+                )
+
+        elif status == "NAO_VINCULADO":
+
+            nao_vinculadas += 1
+
+            if cod_colaborador:
+
+                raise RuntimeError(
+                    "Registro NAO_VINCULADO possui "
+                    "cod_colaborador na linha "
+                    f"{numero_linha}: "
+                    f"{cod_colaborador}"
+                )
+
+        else:
+
+            raise RuntimeError(
+                "status_vinculo_colaborador "
+                "invalido na linha "
+                f"{numero_linha}: "
+                f"{status}"
+            )
+
+    if (
+        vinculadas
+        + nao_vinculadas
+        != len(dados)
+    ):
+
+        raise RuntimeError(
+            "Total de vinculos nao corresponde "
+            "ao total de registros da Prata."
+        )
+
+    print(
+        "Inspecoes vinculadas: "
+        f"{vinculadas}"
+    )
+
+    print(
+        "Inspecoes nao vinculadas: "
+        f"{nao_vinculadas}"
+    )
+
     print(
         "Validacao da Prata: APROVADA"
     )
@@ -1201,8 +1661,13 @@ def atualizar_prata():
             f"{len(deduplicados)}"
         )
 
+        identidades_colaboradores = (
+            carregar_identidades_colaboradores()
+        )
+
         prata = preparar_prata(
-            deduplicados
+            deduplicados,
+            identidades_colaboradores,
         )
 
         escrever_prata(
