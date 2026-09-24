@@ -692,6 +692,214 @@ def gerar_indicadores(
 # PARAMETROS
 # =========================================================
 
+
+# =========================================================
+# PREPARA MART DE CONSUMO
+# =========================================================
+
+def preparar_mart_consumo(
+    mart_enriquecida,
+):
+
+    colunas_origem = {
+        "id_resposta",
+        "nome_formulario",
+        "contrato",
+        "data_inspecao_normalizada",
+        "area_organizacional",
+        "local",
+        "empresa",
+        "estado_do_plano_de_acao",
+        "acciones_correctivas_atrasadas",
+        "cod_colaborador",
+        "status_vinculo_colaborador",
+        "nome_exibicao",
+        "cargo_colaborador",
+        "setor_colaborador",
+        "empresa_colaborador",
+        "data_atualizacao",
+    }
+
+    faltantes = (
+        colunas_origem
+        - set(
+            mart_enriquecida.columns
+        )
+    )
+
+    if faltantes:
+        raise RuntimeError(
+            "Base enriquecida sem colunas "
+            "necessarias para a Mart: "
+            + ", ".join(
+                sorted(
+                    faltantes
+                )
+            )
+        )
+
+    base = mart_enriquecida.copy()
+
+    mart = pd.DataFrame(
+        index=base.index
+    )
+
+    mart["id_resposta"] = pd.to_numeric(
+        base["id_resposta"],
+        errors="raise",
+    ).astype("int64")
+
+    mart["nome_formulario"] = (
+        base["nome_formulario"]
+        .apply(texto)
+    )
+
+    contrato = (
+        base["contrato"]
+        .apply(texto)
+    )
+
+    mart["contrato"] = contrato.mask(
+        contrato.isin(
+            [
+                "",
+                "-",
+            ]
+        ),
+        pd.NA,
+    )
+
+    mart["data_inspecao"] = pd.to_datetime(
+        base["data_inspecao_normalizada"],
+        errors="raise",
+    ).dt.normalize()
+
+    mart["area_organizacional"] = (
+        base["area_organizacional"]
+        .apply(texto)
+    )
+
+    mart["local"] = (
+        base["local"]
+        .apply(texto)
+    )
+
+    empresa_inspecao = (
+        base["empresa"]
+        .apply(texto)
+    )
+
+    mart["empresa_inspecao"] = (
+        empresa_inspecao.mask(
+            empresa_inspecao.isin(
+                [
+                    "",
+                    "-",
+                ]
+            ),
+            pd.NA,
+        )
+    )
+
+    mart["estado_plano_acao"] = (
+        base["estado_do_plano_de_acao"]
+        .apply(texto)
+    )
+
+    acoes = (
+        base[
+            "acciones_correctivas_atrasadas"
+        ]
+        .apply(texto)
+        .replace(
+            {
+                "": "0",
+                "-": "0",
+            }
+        )
+    )
+
+    mart[
+        "acoes_corretivas_atrasadas"
+    ] = pd.to_numeric(
+        acoes,
+        errors="raise",
+    ).astype("int64")
+
+    codigo_colaborador = (
+        base["cod_colaborador"]
+        .apply(texto)
+    )
+
+    mart["cod_colaborador"] = (
+        codigo_colaborador.mask(
+            codigo_colaborador.eq(""),
+            pd.NA,
+        )
+    )
+
+    mart[
+        "status_vinculo_colaborador"
+    ] = (
+        base[
+            "status_vinculo_colaborador"
+        ]
+        .apply(texto)
+        .str.upper()
+    )
+
+    mart["nome_exibicao"] = (
+        base["nome_exibicao"]
+        .apply(texto)
+    )
+
+    for coluna in [
+        "cargo_colaborador",
+        "setor_colaborador",
+        "empresa_colaborador",
+    ]:
+
+        valores = (
+            base[coluna]
+            .apply(texto)
+        )
+
+        mart[coluna] = valores.mask(
+            valores.eq(""),
+            pd.NA,
+        )
+
+    mart["data_atualizacao"] = (
+        pd.to_datetime(
+            base["data_atualizacao"],
+            errors="raise",
+        )
+    )
+
+    nao_vinculados = (
+        mart[
+            "status_vinculo_colaborador"
+        ]
+        .eq(
+            "NAO_VINCULADO"
+        )
+    )
+
+    mart.loc[
+        nao_vinculados,
+        [
+            "cod_colaborador",
+            "cargo_colaborador",
+            "setor_colaborador",
+            "empresa_colaborador",
+        ],
+    ] = pd.NA
+
+    return mart.reset_index(
+        drop=True
+    )
+
+
 def gerar_parametros():
 
     return pd.DataFrame(
@@ -789,6 +997,7 @@ def escrever_temporario(
 # QUALITY GATE DO ARQUIVO TEMPORARIO
 # =========================================================
 
+
 def validar_temporario(
     quantidade_esperada,
 ):
@@ -814,62 +1023,136 @@ def validar_temporario(
             f"Encontrado: {len(mart)}."
         )
 
-    colunas_obrigatorias = {
+    colunas_esperadas = [
         "id_resposta",
-        "identificador_criador",
+        "nome_formulario",
+        "contrato",
+        "data_inspecao",
+        "area_organizacional",
+        "local",
+        "empresa_inspecao",
+        "estado_plano_acao",
+        "acoes_corretivas_atrasadas",
         "cod_colaborador",
         "status_vinculo_colaborador",
         "nome_exibicao",
-        "metodo_vinculo_colaborador",
         "cargo_colaborador",
         "setor_colaborador",
         "empresa_colaborador",
         "data_atualizacao",
-    }
-
-    faltantes = (
-        colunas_obrigatorias
-        - set(
-            mart.columns
-        )
-    )
-
-    if faltantes:
-
-        raise RuntimeError(
-            "Ouro sem colunas obrigatorias: "
-            + ", ".join(
-                sorted(
-                    faltantes
-                )
-            )
-        )
+    ]
 
     if (
-        "criador_de_checklist"
-        in mart.columns
+        mart.columns.tolist()
+        != colunas_esperadas
     ):
 
         raise RuntimeError(
-            "A Ouro contem "
-            "criador_de_checklist. "
-            "O nome completo de origem "
-            "nao deve ser publicado."
+            "Contrato da Mart diferente "
+            "do esperado.\n"
+            f"Esperado: {colunas_esperadas}\n"
+            f"Recebido: {mart.columns.tolist()}"
         )
 
-    ids = (
-        mart[
-            "id_resposta"
-        ]
-        .astype(str)
-        .str.strip()
+    ids = pd.to_numeric(
+        mart["id_resposta"],
+        errors="coerce",
     )
+
+    if ids.isna().any():
+
+        raise RuntimeError(
+            "A Ouro possui "
+            "id_resposta invalido."
+        )
 
     if ids.duplicated().any():
 
         raise RuntimeError(
             "A Ouro possui "
             "id_resposta duplicado."
+        )
+
+    if ids.mod(1).ne(0).any():
+
+        raise RuntimeError(
+            "A Ouro possui "
+            "id_resposta nao inteiro."
+        )
+
+    for coluna in [
+        "nome_formulario",
+        "area_organizacional",
+        "local",
+        "estado_plano_acao",
+        "status_vinculo_colaborador",
+        "nome_exibicao",
+    ]:
+
+        valores = (
+            mart[coluna]
+            .fillna("")
+            .astype(str)
+            .str.strip()
+        )
+
+        if valores.eq("").any():
+
+            raise RuntimeError(
+                "A Ouro possui valor vazio em "
+                f"{coluna}."
+            )
+
+    if (
+        pd.to_datetime(
+            mart["data_inspecao"],
+            errors="coerce",
+        )
+        .isna()
+        .any()
+    ):
+
+        raise RuntimeError(
+            "A Ouro possui "
+            "data_inspecao invalida."
+        )
+
+    if (
+        pd.to_datetime(
+            mart["data_atualizacao"],
+            errors="coerce",
+        )
+        .isna()
+        .any()
+    ):
+
+        raise RuntimeError(
+            "A Ouro possui "
+            "data_atualizacao invalida."
+        )
+
+    acoes = pd.to_numeric(
+        mart[
+            "acoes_corretivas_atrasadas"
+        ],
+        errors="coerce",
+    )
+
+    if acoes.isna().any():
+
+        raise RuntimeError(
+            "A Ouro possui quantidade invalida "
+            "de acoes corretivas atrasadas."
+        )
+
+    if (
+        acoes.lt(0).any()
+        or acoes.mod(1).ne(0).any()
+    ):
+
+        raise RuntimeError(
+            "A Ouro possui quantidade invalida "
+            "de acoes corretivas atrasadas."
         )
 
     status = (
@@ -882,16 +1165,14 @@ def validar_temporario(
         .str.upper()
     )
 
-    invalidos = (
+    if (
         ~status.isin(
             [
                 "VINCULADO",
                 "NAO_VINCULADO",
             ]
         )
-    )
-
-    if invalidos.any():
+    ).any():
 
         raise RuntimeError(
             "A Ouro possui status de "
@@ -926,6 +1207,18 @@ def validar_temporario(
         )
 
     if (
+        vinculados
+        & ~codigo.str.fullmatch(
+            r"[0-9]+-[0-9]+"
+        )
+    ).any():
+
+        raise RuntimeError(
+            "Ouro possui cod_colaborador "
+            "invalido."
+        )
+
+    if (
         nao_vinculados
         & codigo.ne("")
     ).any():
@@ -937,44 +1230,58 @@ def validar_temporario(
         )
 
     for coluna in [
-        "nome_exibicao",
         "cargo_colaborador",
         "setor_colaborador",
         "empresa_colaborador",
     ]:
 
         valores = (
-            mart[
-                coluna
-            ]
+            mart[coluna]
             .fillna("")
             .astype(str)
             .str.strip()
         )
 
-        if coluna == "nome_exibicao":
+        if (
+            vinculados
+            & valores.eq("")
+        ).any():
 
-            if (
-                vinculados
-                & valores.eq("")
-            ).any():
+            raise RuntimeError(
+                "Colaborador vinculado sem "
+                f"{coluna}."
+            )
 
-                raise RuntimeError(
-                    "Colaborador vinculado sem "
-                    "nome_exibicao."
-                )
+        if (
+            nao_vinculados
+            & valores.ne("")
+        ).any():
 
-        else:
+            raise RuntimeError(
+                "Registro NAO_VINCULADO possui "
+                f"{coluna}."
+            )
 
-            if (
-                vinculados
-                & valores.eq("")
-            ).any():
+    nomes = (
+        mart[
+            "nome_exibicao"
+        ]
+        .fillna("")
+        .astype(str)
+        .str.strip()
+    )
 
-                raise RuntimeError(
-                    "Colaborador vinculado sem "
-                    f"{coluna}."
-                )
+    if (
+        nao_vinculados
+        & nomes.ne(
+            "Nao vinculado"
+        )
+    ).any():
+
+        raise RuntimeError(
+            "Registro NAO_VINCULADO com "
+            "nome_exibicao inesperado."
+        )
 
     print(
         "Quality Gate da Ouro: APROVADO"
@@ -1029,14 +1336,18 @@ def gerar_ouro_inspecoes():
         f"{len(identidades)}"
     )
 
-    mart = construir_mart(
+    mart_enriquecida = construir_mart(
         prata,
         mapa,
         identidades,
     )
 
     indicadores = gerar_indicadores(
-        mart
+        mart_enriquecida
+    )
+
+    mart = preparar_mart_consumo(
+        mart_enriquecida
     )
 
     parametros = gerar_parametros()
