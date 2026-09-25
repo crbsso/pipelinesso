@@ -71,12 +71,14 @@ def texto(valor):
 # CARREGA IDENTIDADES
 # =========================================================
 
+
 def carregar_identidades():
 
     if not ARQUIVO_IDENTIDADES.exists():
 
         raise FileNotFoundError(
-            "Arquivo de identidades nao encontrado: "
+            "Configuracao de identidades "
+            "nao encontrada: "
             f"{ARQUIVO_IDENTIDADES}"
         )
 
@@ -89,28 +91,27 @@ def carregar_identidades():
             arquivo
         )
 
-    if configuracao.get("versao") != 1:
+    if configuracao.get(
+        "versao"
+    ) != 1:
 
         raise RuntimeError(
             "Versao invalida de "
             "identidades_colaboradores.json."
         )
 
-    if (
-        str(
-            configuracao.get(
-                "sistema_origem",
-                "",
-            )
+    sistema_origem = str(
+        configuracao.get(
+            "sistema_origem",
+            "",
         )
-        .strip()
-        .upper()
-        != "INSPECOES"
-    ):
+    ).strip().upper()
+
+    if sistema_origem != "INSPECOES":
 
         raise RuntimeError(
-            "sistema_origem invalido "
-            "na configuracao de identidades."
+            "sistema_origem invalido: "
+            f"{sistema_origem}"
         )
 
     registros = configuracao.get(
@@ -123,29 +124,77 @@ def carregar_identidades():
     ):
 
         raise RuntimeError(
-            "Campo identidades deve ser uma lista."
+            "Campo identidades deve ser "
+            "uma lista."
         )
+
+    obrigatorias = {
+        "codigo_inspecao",
+        "cod_colaborador",
+        "status_vinculo",
+        "metodo_vinculo",
+    }
 
     identidades = {}
 
     for item in registros:
 
-        codigo = (
-            str(
-                item.get(
-                    "codigo_inspecao",
-                    "",
+        if not isinstance(
+            item,
+            dict,
+        ):
+
+            raise RuntimeError(
+                "Identidade invalida."
+            )
+
+        faltantes = (
+            obrigatorias
+            - set(item)
+        )
+
+        if faltantes:
+
+            raise RuntimeError(
+                "Identidade sem campos "
+                "obrigatorios: "
+                + ", ".join(
+                    sorted(faltantes)
                 )
             )
-            .strip()
-            .upper()
-        )
+
+        codigo = str(
+            item.get(
+                "codigo_inspecao",
+                "",
+            )
+        ).strip().upper()
+
+        cod_colaborador = str(
+            item.get(
+                "cod_colaborador",
+                "",
+            )
+        ).strip()
+
+        status = str(
+            item.get(
+                "status_vinculo",
+                "",
+            )
+        ).strip().upper()
+
+        metodo = str(
+            item.get(
+                "metodo_vinculo",
+                "",
+            )
+        ).strip().upper()
 
         if not codigo:
 
             raise RuntimeError(
-                "codigo_inspecao vazio "
-                "na configuracao."
+                "codigo_inspecao vazio."
             )
 
         if codigo in identidades:
@@ -155,35 +204,59 @@ def carregar_identidades():
                 f"{codigo}"
             )
 
+        if status == "VINCULADO":
+
+            if not cod_colaborador:
+
+                raise RuntimeError(
+                    "VINCULADO sem "
+                    "cod_colaborador: "
+                    f"{codigo}"
+                )
+
+            if metodo not in {
+                "EXATO",
+                "SIMILARIDADE_VALIDADA",
+            }:
+
+                raise RuntimeError(
+                    "Metodo invalido para "
+                    "VINCULADO: "
+                    f"{codigo} -> {metodo}"
+                )
+
+        elif status == "NAO_VINCULADO":
+
+            if cod_colaborador:
+
+                raise RuntimeError(
+                    "NAO_VINCULADO com "
+                    "cod_colaborador: "
+                    f"{codigo}"
+                )
+
+            if metodo != "NAO_VINCULADO":
+
+                raise RuntimeError(
+                    "Metodo invalido para "
+                    "NAO_VINCULADO: "
+                    f"{codigo}"
+                )
+
+        else:
+
+            raise RuntimeError(
+                "status_vinculo invalido: "
+                f"{codigo} -> {status}"
+            )
+
         identidades[codigo] = {
             "cod_colaborador":
-                str(
-                    item.get(
-                        "cod_colaborador",
-                        "",
-                    )
-                ).strip(),
-            "nome_exibicao":
-                str(
-                    item.get(
-                        "nome_exibicao",
-                        "",
-                    )
-                ).strip(),
+                cod_colaborador,
             "status_vinculo":
-                str(
-                    item.get(
-                        "status_vinculo",
-                        "",
-                    )
-                ).strip().upper(),
+                status,
             "metodo_vinculo":
-                str(
-                    item.get(
-                        "metodo_vinculo",
-                        "",
-                    )
-                ).strip().upper(),
+                metodo,
         }
 
     if not identidades:
@@ -194,10 +267,6 @@ def carregar_identidades():
 
     return identidades
 
-
-# =========================================================
-# CARREGA MAPA DE COLABORADORES
-# =========================================================
 
 def carregar_mapa():
 
@@ -400,25 +469,30 @@ def construir_mart(
         )
 
     # -----------------------------------------------------
-    # Valida Prata contra JSON e prepara nome publico
+    # Valida Prata contra configuracao de identidades
     # -----------------------------------------------------
 
-    nomes_exibicao = []
     metodos_vinculo = []
 
     for indice, linha in prata.iterrows():
 
-        identificador = linha[
-            "identificador_criador"
-        ]
+        identificador = texto(
+            linha[
+                "identificador_criador"
+            ]
+        ).upper()
 
-        codigo = linha[
-            "cod_colaborador"
-        ]
+        codigo = texto(
+            linha[
+                "cod_colaborador"
+            ]
+        )
 
-        status = linha[
-            "status_vinculo_colaborador"
-        ]
+        status = texto(
+            linha[
+                "status_vinculo_colaborador"
+            ]
+        ).upper()
 
         identidade = identidades.get(
             identificador
@@ -427,7 +501,8 @@ def construir_mart(
         if identidade is None:
 
             raise RuntimeError(
-                "Identidade inexistente no JSON: "
+                "Identidade inexistente na "
+                "configuracao: "
                 f"{identificador}"
             )
 
@@ -440,7 +515,7 @@ def construir_mart(
 
             raise RuntimeError(
                 "cod_colaborador diverge "
-                "entre Prata e JSON: "
+                "entre Prata e identidade: "
                 f"{identificador}"
             )
 
@@ -453,52 +528,15 @@ def construir_mart(
 
             raise RuntimeError(
                 "status de vinculo diverge "
-                "entre Prata e JSON: "
+                "entre Prata e identidade: "
                 f"{identificador}"
             )
-
-        if status == "VINCULADO":
-
-            nome_exibicao = (
-                identidade[
-                    "nome_exibicao"
-                ]
-            )
-
-            if not nome_exibicao:
-
-                raise RuntimeError(
-                    "Identidade vinculada sem "
-                    "nome_exibicao: "
-                    f"{identificador}"
-                )
-
-        elif status == "NAO_VINCULADO":
-
-            nome_exibicao = (
-                "Nao vinculado"
-            )
-
-        else:
-
-            raise RuntimeError(
-                "Status de vinculo invalido: "
-                f"{status}"
-            )
-
-        nomes_exibicao.append(
-            nome_exibicao
-        )
 
         metodos_vinculo.append(
             identidade[
                 "metodo_vinculo"
             ]
         )
-
-    prata[
-        "nome_exibicao"
-    ] = nomes_exibicao
 
     prata[
         "metodo_vinculo_colaborador"
@@ -511,6 +549,7 @@ def construir_mart(
     dimensao = mapa[
         [
             "cod_colaborador",
+            "nome_exibicao",
             "funcao_rm",
             "secao_rm",
             "filial_agrupamento",
@@ -895,6 +934,11 @@ def preparar_mart_consumo(
         ],
     ] = pd.NA
 
+    mart.loc[
+        nao_vinculados,
+        "nome_exibicao",
+    ] = "Nao vinculado"
+
     return mart.reset_index(
         drop=True
     )
@@ -908,7 +952,7 @@ def gerar_parametros():
                 "parametro":
                     "fonte_nome_exibicao",
                 "valor":
-                    "identidades_colaboradores.json",
+                    "MAPA_COLABORADORES",
                 "descricao":
                     "Nome controlado para exibicao "
                     "no dashboard.",

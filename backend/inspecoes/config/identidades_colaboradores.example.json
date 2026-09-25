@@ -5,14 +5,12 @@
     {
       "codigo_inspecao": "12345678-9",
       "cod_colaborador": "000001-1",
-      "nome_exibicao": "Nome Exemplo",
       "status_vinculo": "VINCULADO",
       "metodo_vinculo": "EXATO"
     },
     {
       "codigo_inspecao": "98765432-K",
       "cod_colaborador": "",
-      "nome_exibicao": "",
       "status_vinculo": "NAO_VINCULADO",
       "metodo_vinculo": "NAO_VINCULADO"
     }

@@ -188,6 +188,7 @@ def extrair_identificador_criador(valor):
     return identificador
 
 
+
 def carregar_identidades_colaboradores():
 
     if not ARQUIVO_IDENTIDADES_COLABORADORES.exists():
@@ -226,8 +227,7 @@ def carregar_identidades_colaboradores():
     if sistema_origem != "INSPECOES":
 
         raise RuntimeError(
-            "sistema_origem invalido "
-            "na configuracao de identidades: "
+            "sistema_origem invalido: "
             f"{sistema_origem}"
         )
 
@@ -248,7 +248,6 @@ def carregar_identidades_colaboradores():
     obrigatorias = {
         "codigo_inspecao",
         "cod_colaborador",
-        "nome_exibicao",
         "status_vinculo",
         "metodo_vinculo",
     }
@@ -263,25 +262,21 @@ def carregar_identidades_colaboradores():
         ):
 
             raise RuntimeError(
-                "Identidade invalida "
-                "na configuracao."
+                "Identidade invalida."
             )
 
         faltantes = (
             obrigatorias
-            - set(
-                item.keys()
-            )
+            - set(item)
         )
 
         if faltantes:
 
             raise RuntimeError(
-                "Campos ausentes na identidade: "
+                "Identidade sem campos "
+                "obrigatorios: "
                 + ", ".join(
-                    sorted(
-                        faltantes
-                    )
+                    sorted(faltantes)
                 )
             )
 
@@ -295,13 +290,6 @@ def carregar_identidades_colaboradores():
         cod_colaborador = str(
             item.get(
                 "cod_colaborador",
-                "",
-            )
-        ).strip()
-
-        nome_exibicao = str(
-            item.get(
-                "nome_exibicao",
                 "",
             )
         ).strip()
@@ -323,8 +311,7 @@ def carregar_identidades_colaboradores():
         if not codigo_inspecao:
 
             raise RuntimeError(
-                "codigo_inspecao vazio "
-                "na configuracao."
+                "codigo_inspecao vazio."
             )
 
         if codigo_inspecao in identidades:
@@ -341,14 +328,6 @@ def carregar_identidades_colaboradores():
                 raise RuntimeError(
                     "Identidade VINCULADA sem "
                     "cod_colaborador: "
-                    f"{codigo_inspecao}"
-                )
-
-            if not nome_exibicao:
-
-                raise RuntimeError(
-                    "Identidade VINCULADA sem "
-                    "nome_exibicao: "
                     f"{codigo_inspecao}"
                 )
 
@@ -374,14 +353,6 @@ def carregar_identidades_colaboradores():
                     f"{codigo_inspecao}"
                 )
 
-            if nome_exibicao:
-
-                raise RuntimeError(
-                    "Identidade NAO_VINCULADA "
-                    "possui nome_exibicao: "
-                    f"{codigo_inspecao}"
-                )
-
             if metodo_vinculo != "NAO_VINCULADO":
 
                 raise RuntimeError(
@@ -403,8 +374,6 @@ def carregar_identidades_colaboradores():
         ] = {
             "cod_colaborador":
                 cod_colaborador,
-            "nome_exibicao":
-                nome_exibicao,
             "status_vinculo":
                 status_vinculo,
             "metodo_vinculo":
