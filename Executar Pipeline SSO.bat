@@ -1,12 +1,18 @@
 @echo off
+setlocal
 
-set "PROJETO=C:\Users\vinicius.brum\Documents\1.0ProjetosCeleo\pipelinesso"
+set "PROJETO=%~dp0"
+
+if "%PROJETO:~-1%"=="\" (
+    set "PROJETO=%PROJETO:~0,-1%"
+)
+
 set "PYTHON=%PROJETO%\.venv\Scripts\python.exe"
 
 cd /d "%PROJETO%"
 
 echo ============================================================
-echo PIPELINE SSO
+echo PIPELINE SSO - EXECUCAO GLOBAL
 echo ============================================================
 echo.
 
@@ -20,10 +26,7 @@ if not exist "%PYTHON%" (
     exit /b 1
 )
 
-echo Iniciando pipeline...
-echo.
-
-"%PYTHON%" "%PROJETO%\backend\avcb\executar_pipeline.py"
+"%PYTHON%" "%PROJETO%\backend\executar_pipeline_sso.py"
 
 set "CODIGO_ERRO=%ERRORLEVEL%"
 
@@ -41,4 +44,4 @@ echo ============================================================
 echo.
 pause
 
-exit /b %CODIGO_ERRO%
+endlocal & exit /b %CODIGO_ERRO%
