@@ -1,7 +1,14 @@
 ﻿from pathlib import Path
 from datetime import datetime
-import json
 import os
+try:
+    from backend.inspecoes.identidades_supabase import (
+        carregar_identidades_supabase,
+    )
+except ModuleNotFoundError:
+    from identidades_supabase import (
+        carregar_identidades_supabase,
+    )
 
 import pandas as pd
 
@@ -27,14 +34,6 @@ ARQUIVO_MAPA_COLABORADORES = (
     / "master"
     / "colaboradores"
     / "mapa_colaboradores.csv"
-)
-
-ARQUIVO_IDENTIDADES = (
-    RAIZ
-    / "backend"
-    / "inspecoes"
-    / "config"
-    / "identidades_colaboradores.json"
 )
 
 PASTA_OURO = (
@@ -72,198 +71,12 @@ def texto(valor):
 # =========================================================
 
 
+
 def carregar_identidades():
 
-    if not ARQUIVO_IDENTIDADES.exists():
-
-        raise FileNotFoundError(
-            "Configuracao de identidades "
-            "nao encontrada: "
-            f"{ARQUIVO_IDENTIDADES}"
-        )
-
-    with ARQUIVO_IDENTIDADES.open(
-        "r",
-        encoding="utf-8",
-    ) as arquivo:
-
-        configuracao = json.load(
-            arquivo
-        )
-
-    if configuracao.get(
-        "versao"
-    ) != 1:
-
-        raise RuntimeError(
-            "Versao invalida de "
-            "identidades_colaboradores.json."
-        )
-
-    sistema_origem = str(
-        configuracao.get(
-            "sistema_origem",
-            "",
-        )
-    ).strip().upper()
-
-    if sistema_origem != "INSPECOES":
-
-        raise RuntimeError(
-            "sistema_origem invalido: "
-            f"{sistema_origem}"
-        )
-
-    registros = configuracao.get(
-        "identidades"
+    identidades, _, _ = (
+        carregar_identidades_supabase()
     )
-
-    if not isinstance(
-        registros,
-        list,
-    ):
-
-        raise RuntimeError(
-            "Campo identidades deve ser "
-            "uma lista."
-        )
-
-    obrigatorias = {
-        "codigo_inspecao",
-        "cod_colaborador",
-        "status_vinculo",
-        "metodo_vinculo",
-    }
-
-    identidades = {}
-
-    for item in registros:
-
-        if not isinstance(
-            item,
-            dict,
-        ):
-
-            raise RuntimeError(
-                "Identidade invalida."
-            )
-
-        faltantes = (
-            obrigatorias
-            - set(item)
-        )
-
-        if faltantes:
-
-            raise RuntimeError(
-                "Identidade sem campos "
-                "obrigatorios: "
-                + ", ".join(
-                    sorted(faltantes)
-                )
-            )
-
-        codigo = str(
-            item.get(
-                "codigo_inspecao",
-                "",
-            )
-        ).strip().upper()
-
-        cod_colaborador = str(
-            item.get(
-                "cod_colaborador",
-                "",
-            )
-        ).strip()
-
-        status = str(
-            item.get(
-                "status_vinculo",
-                "",
-            )
-        ).strip().upper()
-
-        metodo = str(
-            item.get(
-                "metodo_vinculo",
-                "",
-            )
-        ).strip().upper()
-
-        if not codigo:
-
-            raise RuntimeError(
-                "codigo_inspecao vazio."
-            )
-
-        if codigo in identidades:
-
-            raise RuntimeError(
-                "codigo_inspecao duplicado: "
-                f"{codigo}"
-            )
-
-        if status == "VINCULADO":
-
-            if not cod_colaborador:
-
-                raise RuntimeError(
-                    "VINCULADO sem "
-                    "cod_colaborador: "
-                    f"{codigo}"
-                )
-
-            if metodo not in {
-                "EXATO",
-                "SIMILARIDADE_VALIDADA",
-            }:
-
-                raise RuntimeError(
-                    "Metodo invalido para "
-                    "VINCULADO: "
-                    f"{codigo} -> {metodo}"
-                )
-
-        elif status == "NAO_VINCULADO":
-
-            if cod_colaborador:
-
-                raise RuntimeError(
-                    "NAO_VINCULADO com "
-                    "cod_colaborador: "
-                    f"{codigo}"
-                )
-
-            if metodo != "NAO_VINCULADO":
-
-                raise RuntimeError(
-                    "Metodo invalido para "
-                    "NAO_VINCULADO: "
-                    f"{codigo}"
-                )
-
-        else:
-
-            raise RuntimeError(
-                "status_vinculo invalido: "
-                f"{codigo} -> {status}"
-            )
-
-        identidades[codigo] = {
-            "cod_colaborador":
-                cod_colaborador,
-            "status_vinculo":
-                status,
-            "metodo_vinculo":
-                metodo,
-        }
-
-    if not identidades:
-
-        raise RuntimeError(
-            "Nenhuma identidade encontrada."
-        )
 
     return identidades
 
@@ -357,7 +170,6 @@ def verificar_entradas():
     arquivos = [
         ARQUIVO_PRATA,
         ARQUIVO_MAPA_COLABORADORES,
-        ARQUIVO_IDENTIDADES,
     ]
 
     ausentes = [

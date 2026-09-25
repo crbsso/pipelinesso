@@ -2,10 +2,17 @@
 from collections import Counter, defaultdict
 from datetime import datetime, date
 import csv
-import json
 import os
 import re
 import unicodedata
+try:
+    from backend.inspecoes.identidades_supabase import (
+        carregar_identidades_supabase,
+    )
+except ModuleNotFoundError:
+    from identidades_supabase import (
+        carregar_identidades_supabase,
+    )
 
 from openpyxl import load_workbook, Workbook
 
@@ -46,15 +53,6 @@ ARQUIVO_TEMP = (
     PASTA_PRATA
     / "Inspecoes_Quantidade_novo.xlsx"
 )
-
-ARQUIVO_IDENTIDADES_COLABORADORES = (
-    RAIZ
-    / "backend"
-    / "inspecoes"
-    / "config"
-    / "identidades_colaboradores.json"
-)
-
 
 def normalizar(valor):
 
@@ -189,203 +187,12 @@ def extrair_identificador_criador(valor):
 
 
 
+
 def carregar_identidades_colaboradores():
 
-    if not ARQUIVO_IDENTIDADES_COLABORADORES.exists():
-
-        raise FileNotFoundError(
-            "Configuracao de identidades "
-            "de Inspecoes nao encontrada: "
-            f"{ARQUIVO_IDENTIDADES_COLABORADORES}"
-        )
-
-    with ARQUIVO_IDENTIDADES_COLABORADORES.open(
-        "r",
-        encoding="utf-8",
-    ) as arquivo:
-
-        configuracao = json.load(
-            arquivo
-        )
-
-    if configuracao.get(
-        "versao"
-    ) != 1:
-
-        raise RuntimeError(
-            "Versao invalida da configuracao "
-            "de identidades."
-        )
-
-    sistema_origem = str(
-        configuracao.get(
-            "sistema_origem",
-            "",
-        )
-    ).strip().upper()
-
-    if sistema_origem != "INSPECOES":
-
-        raise RuntimeError(
-            "sistema_origem invalido: "
-            f"{sistema_origem}"
-        )
-
-    registros = configuracao.get(
-        "identidades"
+    identidades, _, _ = (
+        carregar_identidades_supabase()
     )
-
-    if not isinstance(
-        registros,
-        list,
-    ):
-
-        raise RuntimeError(
-            "Campo identidades deve ser "
-            "uma lista."
-        )
-
-    obrigatorias = {
-        "codigo_inspecao",
-        "cod_colaborador",
-        "status_vinculo",
-        "metodo_vinculo",
-    }
-
-    identidades = {}
-
-    for item in registros:
-
-        if not isinstance(
-            item,
-            dict,
-        ):
-
-            raise RuntimeError(
-                "Identidade invalida."
-            )
-
-        faltantes = (
-            obrigatorias
-            - set(item)
-        )
-
-        if faltantes:
-
-            raise RuntimeError(
-                "Identidade sem campos "
-                "obrigatorios: "
-                + ", ".join(
-                    sorted(faltantes)
-                )
-            )
-
-        codigo_inspecao = str(
-            item.get(
-                "codigo_inspecao",
-                "",
-            )
-        ).strip().upper()
-
-        cod_colaborador = str(
-            item.get(
-                "cod_colaborador",
-                "",
-            )
-        ).strip()
-
-        status_vinculo = str(
-            item.get(
-                "status_vinculo",
-                "",
-            )
-        ).strip().upper()
-
-        metodo_vinculo = str(
-            item.get(
-                "metodo_vinculo",
-                "",
-            )
-        ).strip().upper()
-
-        if not codigo_inspecao:
-
-            raise RuntimeError(
-                "codigo_inspecao vazio."
-            )
-
-        if codigo_inspecao in identidades:
-
-            raise RuntimeError(
-                "codigo_inspecao duplicado: "
-                f"{codigo_inspecao}"
-            )
-
-        if status_vinculo == "VINCULADO":
-
-            if not cod_colaborador:
-
-                raise RuntimeError(
-                    "Identidade VINCULADA sem "
-                    "cod_colaborador: "
-                    f"{codigo_inspecao}"
-                )
-
-            if metodo_vinculo not in {
-                "EXATO",
-                "SIMILARIDADE_VALIDADA",
-            }:
-
-                raise RuntimeError(
-                    "Metodo invalido para "
-                    "identidade VINCULADA: "
-                    f"{codigo_inspecao} -> "
-                    f"{metodo_vinculo}"
-                )
-
-        elif status_vinculo == "NAO_VINCULADO":
-
-            if cod_colaborador:
-
-                raise RuntimeError(
-                    "Identidade NAO_VINCULADA "
-                    "possui cod_colaborador: "
-                    f"{codigo_inspecao}"
-                )
-
-            if metodo_vinculo != "NAO_VINCULADO":
-
-                raise RuntimeError(
-                    "Metodo invalido para "
-                    "identidade NAO_VINCULADA: "
-                    f"{codigo_inspecao}"
-                )
-
-        else:
-
-            raise RuntimeError(
-                "status_vinculo invalido: "
-                f"{codigo_inspecao} -> "
-                f"{status_vinculo}"
-            )
-
-        identidades[
-            codigo_inspecao
-        ] = {
-            "cod_colaborador":
-                cod_colaborador,
-            "status_vinculo":
-                status_vinculo,
-            "metodo_vinculo":
-                metodo_vinculo,
-        }
-
-    if not identidades:
-
-        raise RuntimeError(
-            "Nenhuma identidade cadastrada "
-            "para Inspecoes."
-        )
 
     return identidades
 
@@ -1175,7 +982,7 @@ def preparar_prata(
 
             raise RuntimeError(
                 "Criador ainda nao cadastrado "
-                "em identidades_colaboradores.json: "
+                "na configuracao de identidades do Supabase: "
                 f"{identificador_criador}"
             )
 
