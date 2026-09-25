@@ -110,3 +110,5 @@ erro_download_avcb_playwright.png
 # Dados gerados pelo pipeline
 data/
 *.pyc
+
+backend/inspecoes/config/identidades_colaboradores.json

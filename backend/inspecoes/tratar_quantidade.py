@@ -5,6 +5,14 @@ import csv
 import os
 import re
 import unicodedata
+try:
+    from backend.inspecoes.identidades_supabase import (
+        carregar_identidades_supabase,
+    )
+except ModuleNotFoundError:
+    from identidades_supabase import (
+        carregar_identidades_supabase,
+    )
 
 from openpyxl import load_workbook, Workbook
 
@@ -45,7 +53,6 @@ ARQUIVO_TEMP = (
     PASTA_PRATA
     / "Inspecoes_Quantidade_novo.xlsx"
 )
-
 
 def normalizar(valor):
 
@@ -146,6 +153,48 @@ def converter_data(valor):
             continue
 
     return None
+
+
+def extrair_identificador_criador(valor):
+
+    texto = str(
+        valor or ""
+    ).strip()
+
+    if not texto:
+
+        raise RuntimeError(
+            "Criador de checklist vazio."
+        )
+
+    identificador = (
+        texto
+        .split(
+            maxsplit=1
+        )[0]
+        .strip()
+        .upper()
+    )
+
+    if "-" not in identificador:
+
+        raise RuntimeError(
+            "Formato inesperado de criador: "
+            f"{texto}"
+        )
+
+    return identificador
+
+
+
+
+def carregar_identidades_colaboradores():
+
+    identidades, _, _ = (
+        carregar_identidades_supabase()
+    )
+
+    return identidades
 
 
 def carregar_dimensao():
@@ -901,6 +950,7 @@ def deduplicar(
 
 def preparar_prata(
     registros,
+    identidades_colaboradores,
 ):
 
     resultado = []
@@ -913,6 +963,44 @@ def preparar_prata(
             in registro.items()
             if not chave.startswith("_")
         }
+
+        identificador_criador = (
+            extrair_identificador_criador(
+                registro.get(
+                    "criador_de_checklist"
+                )
+            )
+        )
+
+        identidade = (
+            identidades_colaboradores.get(
+                identificador_criador
+            )
+        )
+
+        if identidade is None:
+
+            raise RuntimeError(
+                "Criador ainda nao cadastrado "
+                "na configuracao de identidades do Supabase: "
+                f"{identificador_criador}"
+            )
+
+        novo[
+            "identificador_criador"
+        ] = identificador_criador
+
+        novo[
+            "cod_colaborador"
+        ] = identidade[
+            "cod_colaborador"
+        ]
+
+        novo[
+            "status_vinculo_colaborador"
+        ] = identidade[
+            "status_vinculo"
+        ]
 
         data_inspecao = converter_data(
             registro.get(
@@ -1137,6 +1225,154 @@ def validar_prata(
             "fora do escopo Brasil."
         )
 
+    # =====================================================
+    # VALIDACAO DA IDENTIDADE DO COLABORADOR
+    # =====================================================
+
+    colunas_identidade = {
+        "identificador_criador",
+        "cod_colaborador",
+        "status_vinculo_colaborador",
+    }
+
+    faltantes_identidade = (
+        colunas_identidade
+        - set(cabecalho)
+    )
+
+    if faltantes_identidade:
+
+        raise RuntimeError(
+            "Prata sem colunas de identidade: "
+            + ", ".join(
+                sorted(
+                    faltantes_identidade
+                )
+            )
+        )
+
+    indice_identificador = cabecalho.index(
+        "identificador_criador"
+    )
+
+    indice_colaborador = cabecalho.index(
+        "cod_colaborador"
+    )
+
+    indice_status = cabecalho.index(
+        "status_vinculo_colaborador"
+    )
+
+    vinculadas = 0
+    nao_vinculadas = 0
+
+    for numero_linha, linha in enumerate(
+        dados,
+        start=2,
+    ):
+
+        identificador = str(
+            linha[indice_identificador]
+            or ""
+        ).strip().upper()
+
+        cod_colaborador = str(
+            linha[indice_colaborador]
+            or ""
+        ).strip()
+
+        status = str(
+            linha[indice_status]
+            or ""
+        ).strip().upper()
+
+        if not identificador:
+
+            raise RuntimeError(
+                "Prata possui identificador_criador "
+                "vazio na linha "
+                f"{numero_linha}."
+            )
+
+        if not re.fullmatch(
+            r"[0-9]+-[0-9K]",
+            identificador,
+        ):
+
+            raise RuntimeError(
+                "identificador_criador invalido "
+                "na linha "
+                f"{numero_linha}: "
+                f"{identificador}"
+            )
+
+        if status == "VINCULADO":
+
+            vinculadas += 1
+
+            if not cod_colaborador:
+
+                raise RuntimeError(
+                    "Registro VINCULADO sem "
+                    "cod_colaborador na linha "
+                    f"{numero_linha}."
+                )
+
+            if not re.fullmatch(
+                r"[0-9]+-[0-9]+",
+                cod_colaborador,
+            ):
+
+                raise RuntimeError(
+                    "cod_colaborador invalido "
+                    "na linha "
+                    f"{numero_linha}: "
+                    f"{cod_colaborador}"
+                )
+
+        elif status == "NAO_VINCULADO":
+
+            nao_vinculadas += 1
+
+            if cod_colaborador:
+
+                raise RuntimeError(
+                    "Registro NAO_VINCULADO possui "
+                    "cod_colaborador na linha "
+                    f"{numero_linha}: "
+                    f"{cod_colaborador}"
+                )
+
+        else:
+
+            raise RuntimeError(
+                "status_vinculo_colaborador "
+                "invalido na linha "
+                f"{numero_linha}: "
+                f"{status}"
+            )
+
+    if (
+        vinculadas
+        + nao_vinculadas
+        != len(dados)
+    ):
+
+        raise RuntimeError(
+            "Total de vinculos nao corresponde "
+            "ao total de registros da Prata."
+        )
+
+    print(
+        "Inspecoes vinculadas: "
+        f"{vinculadas}"
+    )
+
+    print(
+        "Inspecoes nao vinculadas: "
+        f"{nao_vinculadas}"
+    )
+
     print(
         "Validacao da Prata: APROVADA"
     )
@@ -1201,8 +1437,13 @@ def atualizar_prata():
             f"{len(deduplicados)}"
         )
 
+        identidades_colaboradores = (
+            carregar_identidades_colaboradores()
+        )
+
         prata = preparar_prata(
-            deduplicados
+            deduplicados,
+            identidades_colaboradores,
         )
 
         escrever_prata(

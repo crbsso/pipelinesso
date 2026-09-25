@@ -23,7 +23,6 @@ ARQUIVO_AVCB = (
 
 PASTA_RELATORIOS = (
     PASTA_PROJETO
-    / "data"
     / "relatorios"
 )
 

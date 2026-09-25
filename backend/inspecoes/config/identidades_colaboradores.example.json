@@ -1,0 +1,18 @@
+{
+  "versao": 1,
+  "sistema_origem": "INSPECOES",
+  "identidades": [
+    {
+      "codigo_inspecao": "12345678-9",
+      "cod_colaborador": "000001-1",
+      "status_vinculo": "VINCULADO",
+      "metodo_vinculo": "EXATO"
+    },
+    {
+      "codigo_inspecao": "98765432-K",
+      "cod_colaborador": "",
+      "status_vinculo": "NAO_VINCULADO",
+      "metodo_vinculo": "NAO_VINCULADO"
+    }
+  ]
+}
