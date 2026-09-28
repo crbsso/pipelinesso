@@ -52,6 +52,10 @@ const navItems: NavItem[] = [
         path: "/consultas/painel-gerencial/inspecoes",
       },
       {
+        name: "Planos de Ação",
+        path: "/consultas/painel-gerencial/planos-acao",
+      },
+      {
         name: "Extintores",
         path: "/consultas/painel-gerencial/extintores",
       },
