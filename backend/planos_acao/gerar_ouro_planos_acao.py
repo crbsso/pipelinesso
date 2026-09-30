@@ -126,6 +126,7 @@ def carregar_prata():
             "criador_plano_variantes",
             "status_criador",
             "gestor_plano",
+            "gestor_exibicao",
             "descricao_plano",
             "contrato_plano",
             "grupo_sso",
@@ -328,6 +329,60 @@ def construir_mart(
 
 
         # -------------------------------------------------
+        # SITUACAO GERENCIAL
+        # -------------------------------------------------
+
+        situacao_gerencial = (
+            "NAO_APLICAVEL"
+        )
+
+
+        if (
+            estado_norm
+            == "fechado apos o prazo"
+        ):
+
+            situacao_gerencial = (
+                "FECHADO_APOS_PRAZO"
+            )
+
+
+        elif (
+            estado_norm
+            == "fechado"
+        ):
+
+            situacao_gerencial = (
+                "FECHADO_NO_PRAZO"
+            )
+
+
+        elif ativo_fonte:
+
+            if (
+                situacao_prazo
+                == "VENCIDO"
+            ):
+
+                situacao_gerencial = (
+                    "VENCIDO"
+                )
+
+
+            elif (
+                situacao_prazo
+                in {
+                    "EM_PRAZO",
+                    "VENCE_HOJE",
+                }
+            ):
+
+                situacao_gerencial = (
+                    "EM_PRAZO"
+                )
+
+
+        # -------------------------------------------------
         # Divergencia entre status PREVSYS e data calculada
         # -------------------------------------------------
 
@@ -461,6 +516,9 @@ def construir_mart(
                 "situacao_prazo_calculada":
                     situacao_prazo,
 
+                "situacao_gerencial":
+                    situacao_gerencial,
+
                 "flag_vencido_calculado":
                     flag_vencido_calculado,
 
@@ -495,6 +553,11 @@ def construir_mart(
                 "gestor_plano":
                     registro[
                         "gestor_plano"
+                    ],
+
+                "gestor_exibicao":
+                    registro[
+                        "gestor_exibicao"
                     ],
 
                 # -----------------------------------------

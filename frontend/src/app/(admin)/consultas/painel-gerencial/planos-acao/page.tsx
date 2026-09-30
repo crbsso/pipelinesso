@@ -18,39 +18,17 @@ const Chart = dynamic(
 );
 
 type PlanoAcao = {
-  plano_id: string;
-  id_resposta: number | null;
-  nome_plano: string | null;
   modulo_origem: string | null;
-  inicio_plano: string | null;
-  criacao_plano: string | null;
   cronograma_plano: string | null;
-  encerramento_plano: string | null;
   nivel_organizacional: string | null;
-  divisao_plano: string | null;
-  estado_plano_fonte: string | null;
   flag_ativo_fonte: number;
-  flag_aberto_fonte: number;
-  flag_atrasado_fonte: number;
-  flag_fechado_fonte: number;
-  flag_fechado_apos_prazo_fonte: number;
-  data_referencia: string | null;
   dias_para_prazo: number | null;
   dias_em_atraso_calculado: number | null;
   situacao_prazo_calculada: string | null;
-  flag_vencido_calculado: number;
-  flag_em_prazo_calculado: number;
+  situacao_gerencial: string | null;
   flag_vence_hoje: number;
-  divergencia_status_prazo: number;
-  criador_plano: string | null;
-  status_criador: string | null;
-  gestor_plano: string | null;
   grupo_sso: string | null;
-  metodo_classificacao: string | null;
-  descricao_plano: string | null;
-  contrato_plano: string | null;
-  registros_origem: number | null;
-  duplicado_origem: string | null;
+  gestor_exibicao: string | null;
 };
 
 type RespostaApi = {
@@ -58,6 +36,73 @@ type RespostaApi = {
   dados: PlanoAcao[];
   error?: string;
 };
+
+const ORDEM_SITUACOES_GERENCIAIS = [
+  "VENCIDO",
+  "EM_PRAZO",
+  "FECHADO_NO_PRAZO",
+  "FECHADO_APOS_PRAZO",
+] as const;
+
+const MESES = [
+  "01",
+  "02",
+  "03",
+  "04",
+  "05",
+  "06",
+  "07",
+  "08",
+  "09",
+  "10",
+  "11",
+  "12",
+];
+
+const NOMES_MESES: Record<string, string> = {
+  "01": "Janeiro",
+  "02": "Fevereiro",
+  "03": "Março",
+  "04": "Abril",
+  "05": "Maio",
+  "06": "Junho",
+  "07": "Julho",
+  "08": "Agosto",
+  "09": "Setembro",
+  "10": "Outubro",
+  "11": "Novembro",
+  "12": "Dezembro",
+};
+
+function nomeSituacaoGerencial(
+  valor: string,
+) {
+  switch (valor) {
+    case "VENCIDO":
+      return "Vencido";
+
+    case "EM_PRAZO":
+      return "Em prazo";
+
+    case "FECHADO_NO_PRAZO":
+      return "Fechado no prazo";
+
+    case "FECHADO_APOS_PRAZO":
+      return "Fechado após o prazo";
+
+    case "NAO_APLICAVEL":
+      return "Não aplicável";
+
+    default:
+      return valor;
+  }
+}
+
+function nomeMes(
+  valor: string,
+) {
+  return NOMES_MESES[valor] ?? valor;
+}
 
 type Aba =
   | "TODOS"
@@ -231,9 +276,11 @@ export default function PlanosAcaoPage() {
     setAba,
   ] = useState<Aba>("TODOS");
 
+
+
   const [
-    filtroGestor,
-    setFiltroGestor,
+    filtroResponsavel,
+    setFiltroResponsavel,
   ] = useState("");
 
   const [
@@ -246,14 +293,21 @@ export default function PlanosAcaoPage() {
     setFiltroOrigem,
   ] = useState("");
 
-  const [
-    filtroEstado,
-    setFiltroEstado,
-  ] = useState("");
+
 
   const [
     filtroSituacao,
     setFiltroSituacao,
+  ] = useState("");
+
+  const [
+    filtroAno,
+    setFiltroAno,
+  ] = useState("");
+
+  const [
+    filtroMes,
+    setFiltroMes,
   ] = useState("");
 
   const [
@@ -337,19 +391,6 @@ export default function PlanosAcaoPage() {
       aba,
     ]);
 
-  const gestores =
-    useMemo(
-      () =>
-        ordenarUnicos(
-          dadosDaAba.map(
-            (item) =>
-              item.gestor_plano,
-          ),
-        ),
-      [
-        dadosDaAba,
-      ],
-    );
 
   const niveis =
     useMemo(
@@ -379,13 +420,14 @@ export default function PlanosAcaoPage() {
       ],
     );
 
-  const estados =
+
+  const responsaveis =
     useMemo(
       () =>
         ordenarUnicos(
           dadosDaAba.map(
             (item) =>
-              item.estado_plano_fonte,
+              item.gestor_exibicao,
           ),
         ),
       [
@@ -396,30 +438,61 @@ export default function PlanosAcaoPage() {
   const situacoes =
     useMemo(
       () =>
-        ordenarUnicos(
-          dadosDaAba.map(
-            (item) =>
-              item.situacao_prazo_calculada,
-          ),
+        ORDEM_SITUACOES_GERENCIAIS.filter(
+          (situacao) =>
+            dadosDaAba.some(
+              (item) =>
+                item.situacao_gerencial ===
+                situacao,
+            ),
         ),
       [
         dadosDaAba,
       ],
     );
 
+  const anos =
+    useMemo(() => {
+      return Array.from(
+        new Set(
+          dadosDaAba
+            .map(
+              (item) =>
+                item.cronograma_plano?.slice(
+                  0,
+                  4,
+                ) ?? "",
+            )
+            .filter(
+              (valor) =>
+                /^\d{4}$/.test(valor),
+            ),
+        ),
+      ).sort(
+        (a, b) =>
+          b.localeCompare(a),
+      );
+    }, [
+      dadosDaAba,
+    ]);
+
   const dadosFiltrados =
     useMemo(() => {
       return dadosDaAba.filter(
         (item) => {
+
           if (
-            filtroGestor &&
-            item.gestor_plano !==
-              filtroGestor
+            filtroResponsavel &&
+            item.gestor_exibicao !==
+              filtroResponsavel
           ) {
             return false;
           }
 
+
+
           if (
+            aba !== "SEGURANCA" &&
             filtroNivel &&
             item.nivel_organizacional !==
               filtroNivel
@@ -435,18 +508,38 @@ export default function PlanosAcaoPage() {
             return false;
           }
 
+
+
           if (
-            filtroEstado &&
-            item.estado_plano_fonte !==
-              filtroEstado
+            filtroSituacao &&
+            item.situacao_gerencial !==
+              filtroSituacao
           ) {
             return false;
           }
 
           if (
-            filtroSituacao &&
-            item.situacao_prazo_calculada !==
-              filtroSituacao
+            filtroAno &&
+            (
+              !item.cronograma_plano ||
+              item.cronograma_plano.slice(
+                0,
+                4,
+              ) !== filtroAno
+            )
+          ) {
+            return false;
+          }
+
+          if (
+            filtroMes &&
+            (
+              !item.cronograma_plano ||
+              item.cronograma_plano.slice(
+                5,
+                7,
+              ) !== filtroMes
+            )
           ) {
             return false;
           }
@@ -478,17 +571,28 @@ export default function PlanosAcaoPage() {
       );
     }, [
       dadosDaAba,
-      filtroGestor,
+      filtroResponsavel,
       filtroNivel,
       filtroOrigem,
-      filtroEstado,
       filtroSituacao,
+      filtroAno,
+      filtroMes,
+      aba,
       prazoDe,
       prazoAte,
     ]);
 
   const indicadores =
     useMemo(() => {
+      const contarSituacao = (
+        situacao: string,
+      ) =>
+        dadosFiltrados.filter(
+          (item) =>
+            item.situacao_gerencial ===
+            situacao,
+        ).length;
+
       return {
         total:
           dadosFiltrados.length,
@@ -501,38 +605,24 @@ export default function PlanosAcaoPage() {
           ).length,
 
         vencidos:
-          dadosFiltrados.filter(
-            (item) =>
-              item.flag_vencido_calculado ===
-              1,
-          ).length,
+          contarSituacao(
+            "VENCIDO",
+          ),
 
         emPrazo:
-          dadosFiltrados.filter(
-            (item) =>
-              item.flag_em_prazo_calculado ===
-              1,
-          ).length,
-        naoAplicavel:
-          dadosFiltrados.filter(
-            (item) =>
-              item.situacao_prazo_calculada ===
-              "NAO_APLICAVEL",
-          ).length,
+          contarSituacao(
+            "EM_PRAZO",
+          ),
+
+        fechadosNoPrazo:
+          contarSituacao(
+            "FECHADO_NO_PRAZO",
+          ),
 
         fechadosAposPrazo:
-          dadosFiltrados.filter(
-            (item) =>
-              item.flag_fechado_apos_prazo_fonte ===
-              1,
-          ).length,
-
-        divergencias:
-          dadosFiltrados.filter(
-            (item) =>
-              item.divergencia_status_prazo ===
-              1,
-          ).length,
+          contarSituacao(
+            "FECHADO_APOS_PRAZO",
+          ),
       };
     }, [
       dadosFiltrados,
@@ -543,8 +633,8 @@ export default function PlanosAcaoPage() {
       () =>
         dadosFiltrados.filter(
           (item) =>
-            item.flag_vencido_calculado ===
-            1,
+            item.situacao_gerencial ===
+            "VENCIDO",
         ),
       [
         dadosFiltrados,
@@ -633,13 +723,13 @@ export default function PlanosAcaoPage() {
       ],
     );
 
-  const rankingGestores =
+  const rankingResponsaveis =
     useMemo(
       () =>
         contarPor(
           vencidos,
           (item) =>
-            item.gestor_plano ??
+            item.gestor_exibicao ??
             "Não informado",
         ).slice(0, 10),
       [
@@ -656,13 +746,15 @@ export default function PlanosAcaoPage() {
     labels: [
       "Vencidos",
       "Em prazo",
-      "Não aplicável",
+      "Fechados no prazo",
+      "Fechados após o prazo",
     ],
 
     colors: [
       "#DC2626",
       "#16A34A",
-      "#6B7280",
+      "#2563EB",
+      "#EA580C",
     ],
 
     legend: {
@@ -788,7 +880,7 @@ export default function PlanosAcaoPage() {
     },
   };
 
-  const opcoesGestores: ApexOptions = {
+  const opcoesResponsaveis: ApexOptions = {
     chart: {
       toolbar: {
         show: false,
@@ -815,7 +907,7 @@ export default function PlanosAcaoPage() {
 
     xaxis: {
       categories:
-        rankingGestores.map(
+        rankingResponsaveis.map(
           ([nome]) =>
             nome,
         ),
@@ -850,11 +942,12 @@ export default function PlanosAcaoPage() {
   }
 
   function limparFiltros() {
-    setFiltroGestor("");
+    setFiltroResponsavel("");
     setFiltroNivel("");
     setFiltroOrigem("");
-    setFiltroEstado("");
     setFiltroSituacao("");
+    setFiltroAno("");
+    setFiltroMes("");
     setPrazoDe("");
     setPrazoAte("");
   }
@@ -945,31 +1038,35 @@ export default function PlanosAcaoPage() {
               </div>
 
               <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+
+
                 <FiltroSelect
-                  label="Gestor"
+                  label="Responsável"
                   value={
-                    filtroGestor
+                    filtroResponsavel
                   }
                   onChange={
-                    setFiltroGestor
+                    setFiltroResponsavel
                   }
                   opcoes={
-                    gestores
+                    responsaveis
                   }
                 />
 
-                <FiltroSelect
-                  label="Nível organizacional"
-                  value={
-                    filtroNivel
-                  }
-                  onChange={
-                    setFiltroNivel
-                  }
-                  opcoes={
-                    niveis
-                  }
-                />
+                {aba !== "SEGURANCA" && (
+                  <FiltroSelect
+                    label="Nível organizacional"
+                    value={
+                      filtroNivel
+                    }
+                    onChange={
+                      setFiltroNivel
+                    }
+                    opcoes={
+                      niveis
+                    }
+                  />
+                )}
 
                 <FiltroSelect
                   label="Módulo de origem"
@@ -984,21 +1081,10 @@ export default function PlanosAcaoPage() {
                   }
                 />
 
-                <FiltroSelect
-                  label="Estado da fonte"
-                  value={
-                    filtroEstado
-                  }
-                  onChange={
-                    setFiltroEstado
-                  }
-                  opcoes={
-                    estados
-                  }
-                />
+
 
                 <FiltroSelect
-                  label="Situação do prazo"
+                  label="Situação do plano"
                   value={
                     filtroSituacao
                   }
@@ -1009,7 +1095,36 @@ export default function PlanosAcaoPage() {
                     situacoes
                   }
                   formatarOpcao={
-                    nomeSituacaoPrazo
+                    nomeSituacaoGerencial
+                  }
+                />
+
+                <FiltroSelect
+                  label="Ano do prazo"
+                  value={
+                    filtroAno
+                  }
+                  onChange={
+                    setFiltroAno
+                  }
+                  opcoes={
+                    anos
+                  }
+                />
+
+                <FiltroSelect
+                  label="Mês do prazo"
+                  value={
+                    filtroMes
+                  }
+                  onChange={
+                    setFiltroMes
+                  }
+                  opcoes={
+                    MESES
+                  }
+                  formatarOpcao={
+                    nomeMes
                   }
                 />
 
@@ -1074,25 +1189,27 @@ export default function PlanosAcaoPage() {
               />
 
               <KpiCard
-                titulo="Divergências"
+                titulo="Fechados no prazo"
                 valor={
-                  indicadores.divergencias
+                  indicadores.fechadosNoPrazo
                 }
               />
             </div>
 
             <div className="grid gap-4 xl:grid-cols-2">
               <GraficoCard
-                titulo="Situação dos planos ativos"
+                titulo="Situação dos Planos de Ação"
               >
                 <Chart
+                  key={`situacao-${indicadores.vencidos}-${indicadores.emPrazo}-${indicadores.fechadosNoPrazo}-${indicadores.fechadosAposPrazo}-${dadosFiltrados.length}`}
                   options={
                     opcoesPrazo
                   }
                   series={[
                     indicadores.vencidos,
                     indicadores.emPrazo,
-                    indicadores.naoAplicavel,
+                    indicadores.fechadosNoPrazo,
+                    indicadores.fechadosAposPrazo,
                   ]}
                   type="donut"
                   height={
@@ -1157,18 +1274,18 @@ export default function PlanosAcaoPage() {
               </GraficoCard>
 
               <GraficoCard
-                titulo="Gestores com mais planos vencidos"
+                titulo="Responsáveis com mais planos vencidos"
               >
                 <Chart
                   options={
-                    opcoesGestores
+                    opcoesResponsaveis
                   }
                   series={[
                     {
                       name:
                         "Planos vencidos",
                       data:
-                        rankingGestores.map(
+                        rankingResponsaveis.map(
                           (
                             [
                               ,
@@ -1180,9 +1297,7 @@ export default function PlanosAcaoPage() {
                     },
                   ]}
                   type="bar"
-                  height={
-                    330
-                  }
+                  height={310}
                 />
               </GraficoCard>
             </div>
@@ -1207,12 +1322,12 @@ export default function PlanosAcaoPage() {
                 <table className="min-w-[1500px] text-sm">
                   <thead className="bg-gray-50 dark:bg-gray-800/50">
                     <tr>
-                      <th className="px-4 py-3 text-left font-medium">
-                        ID
-                      </th>
+
+
+
 
                       <th className="px-4 py-3 text-left font-medium">
-                        Plano
+                        Responsável
                       </th>
 
                       <th className="px-4 py-3 text-left font-medium">
@@ -1223,17 +1338,13 @@ export default function PlanosAcaoPage() {
                         Nível organizacional
                       </th>
 
-                      <th className="px-4 py-3 text-left font-medium">
-                        Gestor
-                      </th>
+
 
                       <th className="px-4 py-3 text-left font-medium">
                         Grupo
                       </th>
 
-                      <th className="px-4 py-3 text-left font-medium">
-                        Estado da fonte
-                      </th>
+
 
                       <th className="px-4 py-3 text-left font-medium">
                         Situação do prazo
@@ -1255,22 +1366,18 @@ export default function PlanosAcaoPage() {
 
                   <tbody>
                     {dadosFiltrados.map(
-                      (plano) => (
+                      (plano, index) => (
                         <tr
-                          key={
-                            plano.plano_id
-                          }
+                          key={index}
                           className="border-t border-gray-100 dark:border-gray-800"
                         >
-                          <td className="whitespace-nowrap px-4 py-3">
-                            {
-                              plano.plano_id
-                            }
-                          </td>
 
-                          <td className="min-w-72 px-4 py-3">
+
+
+
+                          <td className="min-w-48 px-4 py-3">
                             {
-                              plano.nome_plano ??
+                              plano.gestor_exibicao ??
                               "—"
                             }
                           </td>
@@ -1289,12 +1396,7 @@ export default function PlanosAcaoPage() {
                             }
                           </td>
 
-                          <td className="min-w-56 px-4 py-3">
-                            {
-                              plano.gestor_plano ??
-                              "—"
-                            }
-                          </td>
+
 
                           <td className="whitespace-nowrap px-4 py-3">
                             {nomeGrupo(
@@ -1302,12 +1404,7 @@ export default function PlanosAcaoPage() {
                             )}
                           </td>
 
-                          <td className="whitespace-nowrap px-4 py-3">
-                            {
-                              plano.estado_plano_fonte ??
-                              "—"
-                            }
-                          </td>
+
 
                           <td className="whitespace-nowrap px-4 py-3">
                             <PrazoBadge
@@ -1329,16 +1426,7 @@ export default function PlanosAcaoPage() {
                             )}
                           </td>
 
-                          <td className="px-4 py-3">
-                            {plano.divergencia_status_prazo ===
-                            1 ? (
-                              <span className="inline-flex whitespace-nowrap rounded-full bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700 ring-1 ring-inset ring-amber-200">
-                                Status divergente
-                              </span>
-                            ) : (
-                              "—"
-                            )}
-                          </td>
+
                         </tr>
                       ),
                     )}
