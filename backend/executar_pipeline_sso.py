@@ -31,11 +31,11 @@ ETAPAS = [
         / "gerar_mapa_colaboradores.py",
     ),
     (
-        "INSPECOES - EXTRACAO",
+        "PREVSYS - EXTRACOES",
         RAIZ
         / "backend"
-        / "inspecoes"
-        / "extrair_quantidade.py",
+        / "prevsys"
+        / "extrair_prevsys.py",
     ),
     (
         "INSPECOES - CAMADA PRATA",
@@ -78,6 +78,20 @@ ETAPAS = [
         / "backend"
         / "avcb"
         / "gerar_ouro_avcb.py",
+    ),
+    (
+        "PLANOS DE ACAO - CAMADA PRATA",
+        RAIZ
+        / "backend"
+        / "planos_acao"
+        / "tratar_planos_acao.py",
+    ),
+    (
+        "PLANOS DE ACAO - CAMADA OURO",
+        RAIZ
+        / "backend"
+        / "planos_acao"
+        / "gerar_ouro_planos_acao.py",
     ),
     (
         "PUBLICACAO GLOBAL ATOMICA",
@@ -139,6 +153,10 @@ ARQUIVOS_OPERACIONAIS = [
         r"\Colaboradores_RM.xlsx"
     ),
     Path(
+        r"bronze\cadastros\colaboradores"
+        r"\Colaboradores_Folha_RM.xlsx"
+    ),
+    Path(
         r"bronze\inspecoes\quantidade"
         r"\Detalle_Checklist.xlsx"
     ),
@@ -163,6 +181,25 @@ ARQUIVOS_OPERACIONAIS = [
         r"prata\inspecoes\quantidade"
         r"\Inspecoes_Quantidade.xlsx"
     ),
+    Path(
+        r"bronze\planos_acao\Planos_de_acao_detalhados.xlsx"
+    ),
+    Path(
+        r"prata\planos_acao\Planos_de_acao.xlsx"
+    ),
+    Path(
+        r"ouro\planos_acao\mart_planos_acao.xlsx"
+    ),
+    Path(
+        r"diagnosticos\planos_acao_dom_menu.png"
+    ),
+    Path(
+        r"diagnosticos\planos_acao_menu.png"
+    ),
+    Path(
+        r"diagnosticos\prevsis_detalle_nao_encontrado.png"
+    ),
+
 ]
 
 

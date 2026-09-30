@@ -29,6 +29,10 @@ from backend.avcb import (
     publicar_ouro_avcb as avcb,
 )
 
+from backend.planos_acao import (
+    publicar_ouro_planos_acao as planos,
+)
+
 
 RPC_GLOBAL = "promover_pipeline_sso"
 
@@ -47,18 +51,34 @@ def criar_cliente():
         avcb.carregar_configuracao()
     )
 
-    if url_inspecoes != url_avcb:
+    url_planos, secret_planos = (
+        planos.carregar_configuracao()
+    )
+
+    urls = {
+        url_inspecoes,
+        url_avcb,
+        url_planos,
+    }
+
+    if len(urls) != 1:
 
         raise RuntimeError(
-            "Inspecoes e AVCB apontam "
-            "para Supabase diferentes."
+            "Inspecoes, AVCB e Planos de Acao "
+            "apontam para Supabase diferentes."
         )
 
-    if secret_inspecoes != secret_avcb:
+    secrets = {
+        secret_inspecoes,
+        secret_avcb,
+        secret_planos,
+    }
+
+    if len(secrets) != 1:
 
         raise RuntimeError(
-            "Inspecoes e AVCB utilizam "
-            "credenciais diferentes."
+            "Inspecoes, AVCB e Planos de Acao "
+            "utilizam credenciais diferentes."
         )
 
     return create_client(
@@ -81,6 +101,10 @@ def carregar_ouros():
         avcb.carregar_ouro()
     )
 
+    registros_planos = (
+        planos.carregar_ouro()
+    )
+
     if not registros_inspecoes:
 
         raise RuntimeError(
@@ -93,9 +117,23 @@ def carregar_ouros():
             "Mart local de AVCB vazia."
         )
 
+    if not registros_planos:
+
+        raise RuntimeError(
+            "Mart local de Planos de Acao vazia."
+        )
+
+    indicadores_planos = (
+        planos.validar_local(
+            registros_planos
+        )
+    )
+
     return (
         registros_inspecoes,
         registros_avcb,
+        registros_planos,
+        indicadores_planos,
     )
 
 
@@ -121,6 +159,13 @@ def validar_estado_remoto_inicial(
         )
     )
 
+    staging_planos = (
+        planos.contar_remoto(
+            cliente,
+            planos.TABELA_STAGING,
+        )
+    )
+
     mart_inspecoes = (
         inspecoes.contar_registros(
             cliente,
@@ -135,6 +180,13 @@ def validar_estado_remoto_inicial(
         )
     )
 
+    mart_planos = (
+        planos.contar_remoto(
+            cliente,
+            planos.TABELA_MART,
+        )
+    )
+
     print(
         "   Staging Inspecoes:",
         staging_inspecoes,
@@ -146,6 +198,11 @@ def validar_estado_remoto_inicial(
     )
 
     print(
+        "   Staging Planos de Acao:",
+        staging_planos,
+    )
+
+    print(
         "   Mart Inspecoes atual:",
         mart_inspecoes,
     )
@@ -153,6 +210,11 @@ def validar_estado_remoto_inicial(
     print(
         "   Mart AVCB atual:",
         mart_avcb,
+    )
+
+    print(
+        "   Mart Planos de Acao atual:",
+        mart_planos,
     )
 
     if staging_inspecoes != 0:
@@ -171,6 +233,14 @@ def validar_estado_remoto_inicial(
             "Publicacao global bloqueada."
         )
 
+    if staging_planos != 0:
+
+        raise RuntimeError(
+            "Staging de Planos de Acao "
+            "nao esta vazia. "
+            "Publicacao global bloqueada."
+        )
+
 
 # =========================================================
 # RPC GLOBAL
@@ -182,6 +252,8 @@ def promover_globalmente(
     quantidade_inspecoes,
     carga_avcb,
     quantidade_avcb,
+    carga_planos_acao,
+    quantidade_planos_acao,
 ):
 
     resposta = (
@@ -197,6 +269,10 @@ def promover_globalmente(
                     carga_avcb,
                 "p_quantidade_avcb":
                     quantidade_avcb,
+                "p_carga_planos_acao":
+                    carga_planos_acao,
+                "p_quantidade_planos_acao":
+                    quantidade_planos_acao,
             },
         )
         .execute()
@@ -226,6 +302,12 @@ def promover_globalmente(
         )
     )
 
+    planos_publicados = (
+        retorno.get(
+            "planos_acao"
+        )
+    )
+
     if (
         inspecoes_publicadas
         != quantidade_inspecoes
@@ -246,6 +328,17 @@ def promover_globalmente(
             "RPC global retornou "
             "quantidade divergente "
             "para AVCB."
+        )
+
+    if (
+        planos_publicados
+        != quantidade_planos_acao
+    ):
+
+        raise RuntimeError(
+            "RPC global retornou "
+            "quantidade divergente "
+            "para Planos de Acao."
         )
 
     return retorno
@@ -270,6 +363,8 @@ def publicar(
     (
         registros_inspecoes,
         registros_avcb,
+        registros_planos,
+        indicadores_planos,
     ) = carregar_ouros()
 
     print(
@@ -282,6 +377,10 @@ def publicar(
         len(registros_avcb),
     )
 
+    print(
+        "   Planos de Acao:",
+        len(registros_planos),
+    )
 
     print(
         "\n2. Conectando ao Supabase..."
@@ -293,7 +392,6 @@ def publicar(
         "   Conexao criada."
     )
 
-
     print(
         "\n3. Validando estado remoto..."
     )
@@ -301,7 +399,6 @@ def publicar(
     validar_estado_remoto_inicial(
         cliente
     )
-
 
     if dry_run:
 
@@ -317,7 +414,6 @@ def publicar(
 
         return
 
-
     carga_inspecoes = str(
         uuid.uuid4()
     )
@@ -326,15 +422,15 @@ def publicar(
         uuid.uuid4()
     )
 
-    staging_enviada = False
-    buffer_enviado = False
+    carga_planos_acao = str(
+        uuid.uuid4()
+    )
 
+    staging_inspecoes_enviada = False
+    buffer_avcb_enviado = False
+    staging_planos_enviada = False
 
     try:
-
-        # =================================================
-        # INSPECOES
-        # =================================================
 
         print(
             "\n4. Enviando staging "
@@ -352,8 +448,7 @@ def publicar(
             registros_inspecoes,
         )
 
-        staging_enviada = True
-
+        staging_inspecoes_enviada = True
 
         print(
             "\n5. Validando staging "
@@ -371,11 +466,6 @@ def publicar(
             "validada."
         )
 
-
-        # =================================================
-        # AVCB
-        # =================================================
-
         print(
             "\n6. Enviando buffer AVCB..."
         )
@@ -391,8 +481,7 @@ def publicar(
             registros_avcb,
         )
 
-        buffer_enviado = True
-
+        buffer_avcb_enviado = True
 
         print(
             "\n7. Validando buffer AVCB..."
@@ -408,13 +497,52 @@ def publicar(
             "   Buffer AVCB validado."
         )
 
-
-        # =================================================
-        # GATE GLOBAL ATOMICO
-        # =================================================
+        print(
+            "\n8. Enviando staging "
+            "de Planos de Acao..."
+        )
 
         print(
-            "\n8. Executando promocao "
+            "   carga_id:",
+            carga_planos_acao,
+        )
+
+        planos.carregar_staging(
+            cliente,
+            registros_planos,
+            carga_planos_acao,
+        )
+
+        staging_planos_enviada = True
+
+        quantidade_planos_staging = (
+            planos.contar_remoto(
+                cliente,
+                planos.TABELA_STAGING,
+                carga_id=carga_planos_acao,
+            )
+        )
+
+        if (
+            quantidade_planos_staging
+            != indicadores_planos[
+                "total"
+            ]
+        ):
+
+            raise RuntimeError(
+                "Quantidade na staging de "
+                "Planos de Acao difere "
+                "da Ouro local."
+            )
+
+        print(
+            "   Staging de Planos de Acao "
+            "validada."
+        )
+
+        print(
+            "\n9. Executando promocao "
             "global atomica..."
         )
 
@@ -424,6 +552,10 @@ def publicar(
             len(registros_inspecoes),
             carga_avcb,
             len(registros_avcb),
+            carga_planos_acao,
+            indicadores_planos[
+                "total"
+            ],
         )
 
         print(
@@ -435,13 +567,8 @@ def publicar(
             retorno,
         )
 
-
-        # =================================================
-        # VALIDACAO DAS MARTS OFICIAIS
-        # =================================================
-
         print(
-            "\n9. Validando Mart "
+            "\n10. Validando Mart "
             "de Inspecoes..."
         )
 
@@ -455,9 +582,8 @@ def publicar(
             "validada."
         )
 
-
         print(
-            "\n10. Validando Mart AVCB..."
+            "\n11. Validando Mart AVCB..."
         )
 
         avcb.validar_mart(
@@ -469,13 +595,23 @@ def publicar(
             "   Mart AVCB validada."
         )
 
+        print(
+            "\n12. Validando Mart "
+            "de Planos de Acao..."
+        )
 
-        # =================================================
-        # LIMPEZA DAS CARGAS TECNICAS
-        # =================================================
+        planos.validar_mart_remota(
+            cliente,
+            indicadores_planos,
+        )
 
         print(
-            "\n11. Limpando staging "
+            "   Mart de Planos de Acao "
+            "validada."
+        )
+
+        print(
+            "\n13. Limpando staging "
             "de Inspecoes..."
         )
 
@@ -485,12 +621,11 @@ def publicar(
         )
 
         print(
-            "   Staging limpa."
+            "   Staging de Inspecoes limpa."
         )
 
-
         print(
-            "\n12. Limpando buffer AVCB..."
+            "\n14. Limpando buffer AVCB..."
         )
 
         avcb.limpar_buffer(
@@ -499,9 +634,22 @@ def publicar(
         )
 
         print(
-            "   Buffer limpo."
+            "   Buffer AVCB limpo."
         )
 
+        print(
+            "\n15. Limpando staging "
+            "de Planos de Acao..."
+        )
+
+        planos.limpar_staging(
+            cliente,
+            carga_planos_acao,
+        )
+
+        print(
+            "   Staging de Planos de Acao limpa."
+        )
 
     except Exception:
 
@@ -517,7 +665,7 @@ def publicar(
             "foi removido."
         )
 
-        if staging_enviada:
+        if staging_inspecoes_enviada:
 
             print(
                 "Staging de Inspecoes "
@@ -529,7 +677,7 @@ def publicar(
                 carga_inspecoes,
             )
 
-        if buffer_enviado:
+        if buffer_avcb_enviado:
 
             print(
                 "Buffer AVCB preservado "
@@ -541,15 +689,28 @@ def publicar(
                 carga_avcb,
             )
 
-        raise
+        if staging_planos_enviada:
 
+            print(
+                "Staging de Planos de Acao "
+                "preservada para diagnostico."
+            )
+
+            print(
+                "carga_id Planos de Acao:",
+                carga_planos_acao,
+            )
+
+        raise
 
     print()
     print("=" * 70)
+
     print(
         "PUBLICACAO GLOBAL CONCLUIDA "
         "COM SUCESSO"
     )
+
     print("=" * 70)
 
     print(
@@ -563,11 +724,22 @@ def publicar(
     )
 
     print(
+        "Planos de Acao publicados:",
+        indicadores_planos[
+            "total"
+        ],
+    )
+
+    print(
         "Staging Inspecoes: LIMPA"
     )
 
     print(
         "Buffer AVCB: LIMPO"
+    )
+
+    print(
+        "Staging Planos de Acao: LIMPA"
     )
 
     print(
@@ -583,7 +755,7 @@ def main():
 
     parser = argparse.ArgumentParser(
         description=(
-            "Publica Inspecoes e AVCB "
+            "Publica Inspecoes, AVCB e Planos de Acao "
             "atomicamente no Supabase."
         )
     )
