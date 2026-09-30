@@ -30,7 +30,7 @@ ARQUIVO_PRATA = (
     / "avcb_prata.xlsx"
 )
 
-NOME_ABA_BRONZE = "Em Criação"
+NOME_ABA_BRONZE = "Oficial"
 
 
 # =========================================================

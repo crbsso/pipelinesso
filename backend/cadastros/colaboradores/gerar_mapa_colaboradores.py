@@ -15,6 +15,15 @@ ARQUIVO_BRONZE = (
     / "Colaboradores_RM.xlsx"
 )
 
+ARQUIVO_BRONZE_FOLHA = (
+    BASE
+    / "data"
+    / "bronze"
+    / "cadastros"
+    / "colaboradores"
+    / "Colaboradores_Folha_RM.xlsx"
+)
+
 ARQUIVO_SITUACOES = (
     BASE
     / "backend"
@@ -160,6 +169,708 @@ def carregar_rm():
         )
 
     return df
+
+
+def carregar_rm_consolidado():
+    """
+    Consolida duas fontes do TOTVS RM:
+
+    1. Gestao de Pessoas:
+       populacao atual e atributos organizacionais.
+
+    2. Folha de Pagamento:
+       CODPESSOA, admissao, demissao e historico.
+
+    Regra operacional:
+    - atuais permanecem no mapa;
+    - demitidos permanecem por ate 1 ano;
+    - quem ja voltou para a populacao atual nao e
+      duplicado;
+    - historicos com varios vinculos sao
+      canonizados por CODPESSOA.
+    """
+
+    df_atual = carregar_rm()
+
+    if not ARQUIVO_BRONZE_FOLHA.exists():
+        raise FileNotFoundError(
+            "Bronze Folha RM nao encontrado: "
+            f"{ARQUIVO_BRONZE_FOLHA}"
+        )
+
+    folha = pd.read_excel(
+        ARQUIVO_BRONZE_FOLHA,
+        dtype=str,
+    )
+
+    colunas_folha = [
+        "CODCOLIGADA",
+        "CODPESSOA",
+        "CHAPA",
+        "NOME",
+        "CODSITUACAO",
+        "CODSECAO",
+        "DATAADMISSAO",
+        "DATADEMISSAO",
+    ]
+
+    ausentes = [
+        coluna
+        for coluna in colunas_folha
+        if coluna not in folha.columns
+    ]
+
+    if ausentes:
+        raise RuntimeError(
+            "Colunas ausentes no Bronze Folha RM: "
+            + ", ".join(ausentes)
+        )
+
+    for coluna in [
+        "CODCOLIGADA",
+        "CODPESSOA",
+        "CHAPA",
+        "NOME",
+        "CODSITUACAO",
+        "CODSECAO",
+    ]:
+        folha[coluna] = (
+            folha[coluna]
+            .fillna("")
+            .astype(str)
+            .str.strip()
+        )
+
+    folha["DATAADMISSAO"] = pd.to_datetime(
+        folha["DATAADMISSAO"],
+        errors="coerce",
+    )
+
+    folha["DATADEMISSAO"] = pd.to_datetime(
+        folha["DATADEMISSAO"],
+        errors="coerce",
+    )
+
+    if folha[
+        [
+            "CODCOLIGADA",
+            "CHAPA",
+        ]
+    ].duplicated().any():
+
+        duplicados = folha[
+            folha[
+                [
+                    "CODCOLIGADA",
+                    "CHAPA",
+                ]
+            ].duplicated(
+                keep=False
+            )
+        ]
+
+        print(
+            duplicados[
+                [
+                    "CODCOLIGADA",
+                    "CHAPA",
+                    "CODPESSOA",
+                    "NOME",
+                ]
+            ].to_string(
+                index=False
+            )
+        )
+
+        raise RuntimeError(
+            "Folha possui chave "
+            "CODCOLIGADA + CHAPA duplicada."
+        )
+
+    folha["nome_normalizado"] = (
+        folha["NOME"]
+        .apply(normalizar_nome)
+    )
+
+    folha["chave_vinculo"] = (
+        folha["CODCOLIGADA"]
+        + "|"
+        + folha["CHAPA"]
+    )
+
+    df_atual["chave_vinculo"] = (
+        df_atual["CODCOLIGADA"]
+        + "|"
+        + df_atual["CHAPA"]
+    )
+
+    chaves_atuais = set(
+        df_atual["chave_vinculo"]
+    )
+
+    # -----------------------------------------------------
+    # ENRIQUECE OS ATUAIS COM A FOLHA
+    # -----------------------------------------------------
+
+    dados_folha_atual = folha[
+        [
+            "CODCOLIGADA",
+            "CHAPA",
+            "CODPESSOA",
+            "NOME",
+            "CODSITUACAO",
+            "CODSECAO",
+            "DATAADMISSAO",
+            "DATADEMISSAO",
+        ]
+    ].rename(
+        columns={
+            "NOME":
+                "NOME_FOLHA",
+            "CODSITUACAO":
+                "CODSITUACAO_FOLHA",
+            "CODSECAO":
+                "CODSECAO_FOLHA",
+        }
+    )
+
+    df_atual = df_atual.merge(
+        dados_folha_atual,
+        how="left",
+        on=[
+            "CODCOLIGADA",
+            "CHAPA",
+        ],
+        validate="one_to_one",
+    )
+
+    if df_atual["CODPESSOA"].fillna("").eq("").any():
+        raise RuntimeError(
+            "Existe colaborador atual da Gestao "
+            "sem correspondencia na Folha."
+        )
+
+    nomes_folha = (
+        df_atual["NOME_FOLHA"]
+        .apply(normalizar_nome)
+    )
+
+    if not (
+        nomes_folha
+        == df_atual["nome_normalizado"]
+    ).all():
+        raise RuntimeError(
+            "Nome diverge entre Gestao e Folha "
+            "para colaborador atual."
+        )
+
+    if not (
+        df_atual["CODSITUACAO"]
+        == df_atual["CODSITUACAO_FOLHA"]
+    ).all():
+        raise RuntimeError(
+            "CODSITUACAO diverge entre "
+            "Gestao e Folha."
+        )
+
+    if not (
+        df_atual["CODSECAO"]
+        == df_atual["CODSECAO_FOLHA"]
+    ).all():
+        raise RuntimeError(
+            "CODSECAO diverge entre "
+            "Gestao e Folha."
+        )
+
+    df_atual = df_atual.drop(
+        columns=[
+            "NOME_FOLHA",
+            "CODSITUACAO_FOLHA",
+            "CODSECAO_FOLHA",
+        ]
+    )
+
+    df_atual["origem_registro"] = (
+        "GESTAO_ATUAL"
+    )
+
+    df_atual["origem_secao_rm"] = (
+        "GESTAO"
+    )
+
+    df_atual["elegivel_planos_acao"] = 1
+
+    df_atual[
+        "data_limite_elegibilidade"
+    ] = pd.NaT
+
+    # -----------------------------------------------------
+    # HISTORICOS DA FOLHA
+    # -----------------------------------------------------
+
+    historicos = folha[
+        ~folha["chave_vinculo"]
+        .isin(
+            chaves_atuais
+        )
+    ].copy()
+
+    situacoes_inesperadas = sorted(
+        set(
+            historicos[
+                "CODSITUACAO"
+            ]
+            .dropna()
+            .tolist()
+        )
+        - {
+            "",
+            "D",
+        }
+    )
+
+    if situacoes_inesperadas:
+        raise RuntimeError(
+            "Folha possui registros fora da "
+            "Gestao com situacao inesperada: "
+            + ", ".join(
+                situacoes_inesperadas
+            )
+        )
+
+    data_referencia = (
+        pd.Timestamp.now()
+        .normalize()
+    )
+
+    historicos[
+        "data_limite_elegibilidade"
+    ] = (
+        historicos[
+            "DATADEMISSAO"
+        ]
+        + pd.DateOffset(
+            years=1
+        )
+    )
+
+    recentes = historicos[
+        historicos[
+            "DATADEMISSAO"
+        ].notna()
+        &
+        (
+            data_referencia
+            <= historicos[
+                "data_limite_elegibilidade"
+            ]
+        )
+    ].copy()
+
+    codpessoa_atuais = set(
+        df_atual[
+            "CODPESSOA"
+        ]
+    )
+
+    nomes_atuais = set(
+        df_atual[
+            "nome_normalizado"
+        ]
+    )
+
+    mask_ja_atual = (
+        recentes[
+            "CODPESSOA"
+        ].isin(
+            codpessoa_atuais
+        )
+        |
+        recentes[
+            "nome_normalizado"
+        ].isin(
+            nomes_atuais
+        )
+    )
+
+    recentes_recontratados = (
+        recentes.loc[
+            mask_ja_atual
+        ]
+        .copy()
+    )
+
+    historicos_validos = (
+        recentes.loc[
+            ~mask_ja_atual
+        ]
+        .copy()
+    )
+
+    if historicos_validos[
+        "CODPESSOA"
+    ].eq("").any():
+        raise RuntimeError(
+            "Historico recente sem CODPESSOA."
+        )
+
+    nomes_por_pessoa = (
+        historicos_validos
+        .groupby(
+            "CODPESSOA"
+        )[
+            "nome_normalizado"
+        ]
+        .nunique()
+    )
+
+    conflitos_identidade = (
+        nomes_por_pessoa[
+            nomes_por_pessoa > 1
+        ]
+    )
+
+    if not conflitos_identidade.empty:
+        raise RuntimeError(
+            "Mesmo CODPESSOA associado a "
+            "mais de um nome no historico."
+        )
+
+    # -----------------------------------------------------
+    # CANONIZACAO DOS HISTORICOS
+    #
+    # 1. demissao mais recente
+    # 2. menor CODCOLIGADA
+    # 3. menor CHAPA
+    # -----------------------------------------------------
+
+    historicos_validos[
+        "_ord_coligada"
+    ] = pd.to_numeric(
+        historicos_validos[
+            "CODCOLIGADA"
+        ],
+        errors="coerce",
+    )
+
+    historicos_validos[
+        "_ord_chapa"
+    ] = pd.to_numeric(
+        historicos_validos[
+            "CHAPA"
+        ],
+        errors="coerce",
+    )
+
+    historicos_validos[
+        "_ord_coligada"
+    ] = historicos_validos[
+        "_ord_coligada"
+    ].fillna(
+        10**9
+    )
+
+    historicos_validos[
+        "_ord_chapa"
+    ] = historicos_validos[
+        "_ord_chapa"
+    ].fillna(
+        10**9
+    )
+
+    canonicos = (
+        historicos_validos
+        .sort_values(
+            [
+                "CODPESSOA",
+                "DATADEMISSAO",
+                "_ord_coligada",
+                "_ord_chapa",
+            ],
+            ascending=[
+                True,
+                False,
+                True,
+                True,
+            ],
+        )
+        .drop_duplicates(
+            subset=[
+                "CODPESSOA",
+            ],
+            keep="first",
+        )
+        .copy()
+    )
+
+    # -----------------------------------------------------
+    # DIMENSAO GLOBAL CODSECAO -> SECAO
+    # -----------------------------------------------------
+
+    dim_secao = (
+        df_atual[
+            [
+                "CODSECAO",
+                "SECAO",
+            ]
+        ]
+        .drop_duplicates()
+    )
+
+    quantidade_descricoes = (
+        dim_secao
+        .groupby(
+            "CODSECAO"
+        )[
+            "SECAO"
+        ]
+        .nunique()
+    )
+
+    conflitos_secao = (
+        quantidade_descricoes[
+            quantidade_descricoes > 1
+        ]
+    )
+
+    if not conflitos_secao.empty:
+        raise RuntimeError(
+            "CODSECAO possui mais de uma "
+            "descricao na Gestao."
+        )
+
+    dim_secao = (
+        dim_secao
+        .drop_duplicates(
+            subset=[
+                "CODSECAO",
+            ]
+        )
+    )
+
+    canonicos = canonicos.merge(
+        dim_secao,
+        how="left",
+        on="CODSECAO",
+        validate="many_to_one",
+    )
+
+    canonicos["SECAO"] = (
+        canonicos["SECAO"]
+        .fillna("")
+        .astype(str)
+        .str.strip()
+    )
+
+    # -----------------------------------------------------
+    # TRANSFORMA HISTORICOS PARA O CONTRATO DO MAPA
+    # -----------------------------------------------------
+
+    historico_mapa = pd.DataFrame(
+        {
+            "CODCOLIGADA":
+                canonicos[
+                    "CODCOLIGADA"
+                ],
+            "CODFILIAL":
+                "",
+            "FILIAL":
+                "",
+            "CHAPA":
+                canonicos[
+                    "CHAPA"
+                ],
+            "COLABORADOR":
+                canonicos[
+                    "NOME"
+                ],
+            "CODFUNCAO":
+                "",
+            "FUNCAO":
+                "",
+            "CODSITUACAO":
+                canonicos[
+                    "CODSITUACAO"
+                ],
+            "CODSECAO":
+                canonicos[
+                    "CODSECAO"
+                ],
+            "SECAO":
+                canonicos[
+                    "SECAO"
+                ],
+            "nome_normalizado":
+                canonicos[
+                    "nome_normalizado"
+                ],
+            "cod_colaborador_rm":
+                (
+                    canonicos[
+                        "CHAPA"
+                    ]
+                    + "-"
+                    + canonicos[
+                        "CODCOLIGADA"
+                    ]
+                ),
+            "CODPESSOA":
+                canonicos[
+                    "CODPESSOA"
+                ],
+            "DATAADMISSAO":
+                canonicos[
+                    "DATAADMISSAO"
+                ],
+            "DATADEMISSAO":
+                canonicos[
+                    "DATADEMISSAO"
+                ],
+            "data_limite_elegibilidade":
+                canonicos[
+                    "data_limite_elegibilidade"
+                ],
+            "origem_registro":
+                "FOLHA_DEMITIDO_ATE_1_ANO",
+            "origem_secao_rm":
+                canonicos[
+                    "SECAO"
+                ]
+                .ne("")
+                .map(
+                    {
+                        True:
+                            "CODSECAO_GLOBAL",
+                        False:
+                            "NAO_RESOLVIDA",
+                    }
+                ),
+            "elegivel_planos_acao":
+                1,
+        }
+    )
+
+    historico_mapa[
+        "chave_vinculo"
+    ] = (
+        historico_mapa[
+            "CODCOLIGADA"
+        ]
+        + "|"
+        + historico_mapa[
+            "CHAPA"
+        ]
+    )
+
+    consolidado = pd.concat(
+        [
+            df_atual,
+            historico_mapa,
+        ],
+        ignore_index=True,
+        sort=False,
+    )
+
+    for coluna in [
+        "DATAADMISSAO",
+        "DATADEMISSAO",
+        "data_limite_elegibilidade",
+    ]:
+
+        consolidado[coluna] = (
+            pd.to_datetime(
+                consolidado[coluna],
+                errors="coerce",
+            )
+            .dt.strftime(
+                "%Y-%m-%d"
+            )
+            .fillna("")
+        )
+
+    consolidado = consolidado.drop(
+        columns=[
+            "chave_vinculo",
+        ],
+        errors="ignore",
+    )
+
+    if consolidado[
+        "cod_colaborador_rm"
+    ].duplicated().any():
+        raise RuntimeError(
+            "Mapa consolidado possui "
+            "cod_colaborador_rm duplicado."
+        )
+
+    sem_secao_historico = (
+        historico_mapa[
+            "SECAO"
+        ]
+        .eq("")
+    )
+
+    print()
+    print("=" * 90)
+    print("CONSOLIDACAO DAS FONTES RM")
+    print("=" * 90)
+
+    print(
+        "Gestao atual:",
+        len(df_atual),
+    )
+
+    print(
+        "Historicos dentro de 1 ano:",
+        len(recentes),
+    )
+
+    print(
+        "Linhas removidas por pessoa ja atual:",
+        len(recentes_recontratados),
+    )
+
+    print(
+        "Historicos canonicos adicionados:",
+        len(historico_mapa),
+    )
+
+    print(
+        "Historicos sem SECAO resolvida:",
+        int(
+            sem_secao_historico.sum()
+        ),
+    )
+
+    print(
+        "Registros consolidados:",
+        len(consolidado),
+    )
+
+    if sem_secao_historico.any():
+
+        print()
+        print(
+            "ATENCAO - historico sem "
+            "descricao de SECAO:"
+        )
+
+        print(
+            historico_mapa.loc[
+                sem_secao_historico,
+                [
+                    "CODPESSOA",
+                    "CODCOLIGADA",
+                    "CHAPA",
+                    "COLABORADOR",
+                    "CODSECAO",
+                ],
+            ].to_string(
+                index=False
+            )
+        )
+
+    return consolidado
 
 
 def carregar_situacoes():
@@ -483,6 +1194,13 @@ def montar_mapa_final(mapa):
             "nome_exibicao",
 
             "CHAPA",
+            "CODPESSOA",
+            "DATAADMISSAO",
+            "DATADEMISSAO",
+            "data_limite_elegibilidade",
+            "origem_registro",
+            "origem_secao_rm",
+            "elegivel_planos_acao",
 
             "cod_coligada_rm",
             "cod_filial_rm",
@@ -516,6 +1234,12 @@ def montar_mapa_final(mapa):
                 "nome_completo_rm",
             "CHAPA":
                 "chapa",
+            "CODPESSOA":
+                "cod_pessoa_rm",
+            "DATAADMISSAO":
+                "data_admissao",
+            "DATADEMISSAO":
+                "data_demissao",
             "CODFUNCAO":
                 "cod_funcao",
             "CODSECAO":
@@ -622,7 +1346,7 @@ def main():
     print("GERACAO DO MAPA DE COLABORADORES")
     print("=" * 90)
 
-    df = carregar_rm()
+    df = carregar_rm_consolidado()
 
     print(
         f"Registros recebidos do RM: "

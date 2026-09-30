@@ -31,7 +31,7 @@ PASTA_PROJETO = Path(__file__).resolve().parents[2]
 # CONFIGURAÇÕES DO AVCB
 # =========================================================
 
-NOME_ABA_AVCB = "Em Criação"
+NOME_ABA_AVCB = "Oficial"
 
 load_dotenv(
     PASTA_PROJETO / ".env"
@@ -292,7 +292,8 @@ def validar_excel(
 
         raise ValueError(
             f"A aba '{NOME_ABA_AVCB}' "
-            "não foi encontrada."
+            "nao foi encontrada. "
+            f"Abas encontradas: {abas}"
         )
 
     print(

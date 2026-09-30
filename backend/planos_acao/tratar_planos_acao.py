@@ -3,6 +3,7 @@ from openpyxl import load_workbook, Workbook
 from collections import Counter
 from datetime import datetime
 import unicodedata
+import csv
 import json
 import os
 import re
@@ -46,12 +47,20 @@ ARQUIVO_TEMP = (
 )
 
 
-ARQUIVO_CONFIG = (
+ARQUIVO_MAPA_COLABORADORES = (
+    RAIZ
+    / "data"
+    / "master"
+    / "colaboradores"
+    / "mapa_colaboradores.csv"
+)
+
+ARQUIVO_ALIASES = (
     RAIZ
     / "backend"
     / "planos_acao"
     / "config"
-    / "grupos_sso.json"
+    / "aliases_gestores.json"
 )
 
 
@@ -124,75 +133,235 @@ def texto_limpo(valor):
 # CONFIGURACAO
 # =========================================================
 
-def carregar_mapa_gestores():
+def carregar_mapa_colaboradores():
 
-    if not ARQUIVO_CONFIG.exists():
+    if not ARQUIVO_MAPA_COLABORADORES.exists():
 
         raise RuntimeError(
-            "Configuracao de grupos SSO "
-            "nao encontrada: "
-            f"{ARQUIVO_CONFIG}"
+            "Mapa de colaboradores "
+            "nao encontrado: "
+            f"{ARQUIVO_MAPA_COLABORADORES}"
         )
 
 
-    dados = json.loads(
-        ARQUIVO_CONFIG.read_text(
-            encoding="utf-8"
-        )
-    )
+    with ARQUIVO_MAPA_COLABORADORES.open(
+        "r",
+        encoding="utf-8-sig",
+        newline="",
+    ) as arquivo_csv:
 
-
-    mapa = {}
-
-
-    for item in dados.get(
-        "gestores",
-        [],
-    ):
-
-        nome = normalizar(
-            item.get(
-                "nome"
-            )
+        leitor = csv.DictReader(
+            arquivo_csv,
+            delimiter=";",
         )
 
-        grupo = (
-            str(
-                item.get(
-                    "grupo_sso",
-                    "",
-                )
-            )
-            .strip()
-            .upper()
+        campos = set(
+            leitor.fieldnames
+            or []
         )
 
+        obrigatorios = {
+            "cod_colaborador",
+            "nome_normalizado",
+            "nome_completo_rm",
+            "secao_rm",
+            "elegivel_planos_acao",
+            "origem_registro",
+            "data_demissao",
+            "data_limite_elegibilidade",
+        }
 
-        if not nome:
-            continue
+        ausentes = (
+            obrigatorios
+            - campos
+        )
 
-
-        if grupo not in {
-            "SEGURANCA",
-            "OUTRAS_AREAS",
-        }:
+        if ausentes:
 
             raise RuntimeError(
-                "Grupo SSO invalido para "
-                f"{item.get('nome')}: "
-                f"{grupo}"
+                "Mapa de colaboradores "
+                "sem colunas obrigatorias: "
+                + ", ".join(
+                    sorted(ausentes)
+                )
             )
 
 
-        mapa[nome] = grupo
+        mapa = {}
+
+
+        for linha in leitor:
+
+            nome = normalizar(
+                linha.get(
+                    "nome_normalizado"
+                )
+                or linha.get(
+                    "nome_completo_rm"
+                )
+            )
+
+
+            if not nome:
+
+                raise RuntimeError(
+                    "Mapa de colaboradores "
+                    "possui nome vazio."
+                )
+
+
+            if nome in mapa:
+
+                raise RuntimeError(
+                    "Mapa de colaboradores "
+                    "possui nome duplicado: "
+                    f"{nome}"
+                )
+
+
+            mapa[nome] = {
+                "cod_colaborador":
+                    texto_limpo(
+                        linha.get(
+                            "cod_colaborador"
+                        )
+                    ),
+
+                "nome_completo_rm":
+                    texto_limpo(
+                        linha.get(
+                            "nome_completo_rm"
+                        )
+                    ),
+
+                "secao_rm":
+                    texto_limpo(
+                        linha.get(
+                            "secao_rm"
+                        )
+                    ),
+
+                "elegivel_planos_acao":
+                    texto_limpo(
+                        linha.get(
+                            "elegivel_planos_acao"
+                        )
+                    ),
+
+                "origem_registro":
+                    texto_limpo(
+                        linha.get(
+                            "origem_registro"
+                        )
+                    ),
+
+                "data_demissao":
+                    texto_limpo(
+                        linha.get(
+                            "data_demissao"
+                        )
+                    ),
+
+                "data_limite_elegibilidade":
+                    texto_limpo(
+                        linha.get(
+                            "data_limite_elegibilidade"
+                        )
+                    ),
+            }
+
+
+    if not mapa:
+
+        raise RuntimeError(
+            "Mapa de colaboradores vazio."
+        )
 
 
     return mapa
 
 
-# =========================================================
-# LEITURA BRONZE
-# =========================================================
+def carregar_aliases_gestores(
+    mapa_colaboradores,
+):
+
+    if not ARQUIVO_ALIASES.exists():
+
+        raise RuntimeError(
+            "Arquivo de aliases "
+            "nao encontrado: "
+            f"{ARQUIVO_ALIASES}"
+        )
+
+
+    with ARQUIVO_ALIASES.open(
+        "r",
+        encoding="utf-8",
+    ) as arquivo_json:
+
+        dados = json.load(
+            arquivo_json
+        )
+
+
+    aliases = {}
+
+
+    for item in dados.get(
+        "aliases",
+        [],
+    ):
+
+        origem = normalizar(
+            item.get(
+                "nome_prevsys"
+            )
+        )
+
+        destino = normalizar(
+            item.get(
+                "nome_rm"
+            )
+        )
+
+
+        if not origem:
+
+            raise RuntimeError(
+                "Alias possui "
+                "nome PREVSYS vazio."
+            )
+
+
+        if not destino:
+
+            raise RuntimeError(
+                "Alias possui "
+                "nome RM vazio."
+            )
+
+
+        if origem in aliases:
+
+            raise RuntimeError(
+                "Alias PREVSYS duplicado: "
+                f"{origem}"
+            )
+
+
+        if destino not in mapa_colaboradores:
+
+            raise RuntimeError(
+                "Destino de alias nao existe "
+                "no mapa RM: "
+                f"{destino}"
+            )
+
+
+        aliases[origem] = destino
+
+
+    return aliases
 
 def carregar_bronze():
 
@@ -581,57 +750,112 @@ def deduplicar(
 # =========================================================
 
 def classificar_sso(
-    nivel,
     gestor,
-    mapa_gestores,
+    mapa_colaboradores,
+    aliases_gestores,
 ):
-
-    nivel_norm = normalizar(
-        nivel
-    )
 
     gestor_norm = normalizar(
         gestor
     )
 
 
-    if nivel_norm in {
-        "seguranca e saude",
-        "sso - seguranca e saude ocupacional",
-    }:
+    if not gestor_norm:
 
         return (
-            "SEGURANCA",
-            "NIVEL_ORGANIZACIONAL",
+            None,
+            "SEM_GESTOR",
         )
 
 
-    if gestor_norm in mapa_gestores:
+    if gestor_norm in mapa_colaboradores:
 
-        return (
-            mapa_gestores[
+        nome_rm = gestor_norm
+        metodo = "MAPA_RM_EXATO"
+
+    elif gestor_norm in aliases_gestores:
+
+        nome_rm = (
+            aliases_gestores[
                 gestor_norm
-            ],
-            "MAPA_GESTOR",
+            ]
+        )
+
+        metodo = "MAPA_RM_ALIAS"
+
+    else:
+
+        return (
+            None,
+            "SEM_IDENTIDADE_RM",
         )
 
 
-    return (
-        "OUTRAS_AREAS",
-        "PADRAO",
+    cadastro = (
+        mapa_colaboradores[
+            nome_rm
+        ]
     )
 
 
-# =========================================================
-# PREPARA PRATA
-# =========================================================
+    if (
+        cadastro[
+            "elegivel_planos_acao"
+        ]
+        != "1"
+    ):
+
+        return (
+            None,
+            "NAO_ELEGIVEL_RM",
+        )
+
+
+    secao = texto_limpo(
+        cadastro[
+            "secao_rm"
+        ]
+    )
+
+
+    if not secao:
+
+        return (
+            None,
+            "SECAO_RM_NAO_RESOLVIDA",
+        )
+
+
+    secao_norm = normalizar(
+        secao
+    )
+
+
+    if (
+        secao_norm
+        == "seguranca e saude ocupacional"
+    ):
+
+        grupo = "SEGURANCA"
+
+    else:
+
+        grupo = "OUTRAS_AREAS"
+
+
+    return (
+        grupo,
+        metodo,
+    )
 
 def preparar_prata(
     registros_deduplicados,
-    mapa_gestores,
+    mapa_colaboradores,
+    aliases_gestores,
 ):
 
     prata = []
+    excluidos = []
 
 
     for item in registros_deduplicados:
@@ -644,14 +868,37 @@ def preparar_prata(
         grupo_sso, metodo = (
             classificar_sso(
                 origem.get(
-                    "nivel organizacional"
-                ),
-                origem.get(
                     "gestor de plano"
                 ),
-                mapa_gestores,
+                mapa_colaboradores,
+                aliases_gestores,
             )
         )
+
+
+        if grupo_sso is None:
+
+            excluidos.append(
+                {
+                    "plano_id":
+                        item.get(
+                            "plano_id",
+                            "",
+                        ),
+
+                    "gestor_plano":
+                        texto_limpo(
+                            origem.get(
+                                "gestor de plano"
+                            )
+                        ),
+
+                    "motivo":
+                        metodo,
+                }
+            )
+
+            continue
 
 
         prata.append(
@@ -774,6 +1021,77 @@ def preparar_prata(
                     ],
             }
         )
+
+
+    print()
+    print("=" * 70)
+    print(
+        "FILTRO DE IDENTIDADE RM "
+        "- PLANOS DE ACAO"
+    )
+    print("=" * 70)
+
+    print(
+        "Planos recebidos:",
+        len(
+            registros_deduplicados
+        ),
+    )
+
+    print(
+        "Planos elegiveis:",
+        len(prata),
+    )
+
+    print(
+        "Planos excluidos:",
+        len(excluidos),
+    )
+
+
+    if excluidos:
+
+        motivos = Counter(
+            item[
+                "motivo"
+            ]
+            for item
+            in excluidos
+        )
+
+        print()
+        print(
+            "Motivos de exclusao:"
+        )
+
+        for motivo, quantidade in (
+            sorted(
+                motivos.items()
+            )
+        ):
+
+            print(
+                f"  {motivo}: "
+                f"{quantidade}"
+            )
+
+
+        print()
+        print(
+            "Planos excluidos:"
+        )
+
+        for item in excluidos:
+
+            print(
+                "  "
+                f"plano_id="
+                f"{item['plano_id']} | "
+                f"gestor="
+                f"{item['gestor_plano']} | "
+                f"motivo="
+                f"{item['motivo']}"
+            )
 
 
     return prata
@@ -932,15 +1250,27 @@ def main():
     print("=" * 70)
 
 
-    mapa_gestores = (
-        carregar_mapa_gestores()
+    mapa_colaboradores = (
+        carregar_mapa_colaboradores()
+    )
+
+    aliases_gestores = (
+        carregar_aliases_gestores(
+            mapa_colaboradores
+        )
     )
 
 
     print()
     print(
-        "Gestores configurados no mapa:",
-        len(mapa_gestores),
+        "Colaboradores disponiveis no mapa RM:",
+        len(mapa_colaboradores),
+    )
+
+
+    print(
+        "Aliases de gestores:",
+        len(aliases_gestores),
     )
 
 
@@ -977,7 +1307,8 @@ def main():
 
     prata = preparar_prata(
         deduplicados,
-        mapa_gestores,
+        mapa_colaboradores,
+        aliases_gestores,
     )
 
 

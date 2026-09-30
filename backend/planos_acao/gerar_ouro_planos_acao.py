@@ -560,15 +560,31 @@ def validar_mart(
         )
 
 
+    # =====================================================
+    # IDENTIDADE
+    # =====================================================
+
     ids = [
         str(
             registro[
                 "plano_id"
             ]
-        )
+        ).strip()
         for registro
         in mart
     ]
+
+
+    if any(
+        not plano_id
+        for plano_id
+        in ids
+    ):
+
+        raise RuntimeError(
+            "Existem plano_id vazios "
+            "na Ouro."
+        )
 
 
     if len(ids) != len(
@@ -581,12 +597,18 @@ def validar_mart(
         )
 
 
-    if len(mart) != 204:
+    # =====================================================
+    # GRUPO SSO
+    #
+    # Nao validamos quantidades fixas.
+    # A distribuicao depende da populacao elegivel
+    # do cadastro RM em cada execucao.
+    # =====================================================
 
-        raise RuntimeError(
-            "Quantidade inesperada na Ouro. "
-            f"Esperado: 204. Recebido: {len(mart)}"
-        )
+    grupos_validos = {
+        "SEGURANCA",
+        "OUTRAS_AREAS",
+    }
 
 
     grupos = Counter(
@@ -598,19 +620,88 @@ def validar_mart(
     )
 
 
-    if groups := (
-        grupos
-        != {
-            "SEGURANCA": 107,
-            "OUTRAS_AREAS": 97,
-        }
-    ):
+    grupos_invalidos = (
+        set(
+            grupos
+        )
+        - grupos_validos
+    )
+
+
+    if grupos_invalidos:
 
         raise RuntimeError(
-            "Distribuicao de grupos SSO "
-            "diferente do contrato esperado: "
-            f"{dict(grupos)}"
+            "Existem grupos SSO invalidos: "
+            + ", ".join(
+                sorted(
+                    grupos_invalidos
+                )
+            )
         )
+
+
+    if sum(
+        grupos.values()
+    ) != len(mart):
+
+        raise RuntimeError(
+            "Contagem de grupos SSO "
+            "nao fecha com a Mart."
+        )
+
+
+    # =====================================================
+    # METODO DE CLASSIFICACAO
+    # =====================================================
+
+    metodos_validos = {
+        "MAPA_RM_EXATO",
+        "MAPA_RM_ALIAS",
+    }
+
+
+    metodos = Counter(
+        registro[
+            "metodo_classificacao"
+        ]
+        for registro
+        in mart
+    )
+
+
+    metodos_invalidos = (
+        set(
+            metodos
+        )
+        - metodos_validos
+    )
+
+
+    if metodos_invalidos:
+
+        raise RuntimeError(
+            "Existem metodos de classificacao "
+            "invalidos: "
+            + ", ".join(
+                sorted(
+                    metodos_invalidos
+                )
+            )
+        )
+
+
+    # =====================================================
+    # ESTADOS
+    #
+    # Valida dominio, nao fotografia de quantidade.
+    # =====================================================
+
+    estados_validos = {
+        "aberto",
+        "atrasado",
+        "fechado",
+        "fechado apos o prazo",
+    }
 
 
     estados = Counter(
@@ -624,27 +715,46 @@ def validar_mart(
     )
 
 
-    esperado_estados = {
-        "aberto": 47,
-        "atrasado": 75,
-        "fechado": 48,
-        "fechado apos o prazo": 34,
-    }
+    estados_invalidos = (
+        set(
+            estados
+        )
+        - estados_validos
+    )
 
 
-    if estados != esperado_estados:
+    if estados_invalidos:
 
         raise RuntimeError(
-            "Distribuicao de estados diferente "
-            "do contrato esperado: "
-            f"{dict(estados)}"
+            "Existem estados de plano invalidos: "
+            + ", ".join(
+                sorted(
+                    estados_invalidos
+                )
+            )
         )
 
 
+    if sum(
+        estados.values()
+    ) != len(mart):
+
+        raise RuntimeError(
+            "Contagem de estados "
+            "nao fecha com a Mart."
+        )
+
+
+    # =====================================================
+    # PRAZO
+    # =====================================================
+
     ativos_sem_prazo = [
-        registro[
-            "plano_id"
-        ]
+        str(
+            registro[
+                "plano_id"
+            ]
+        )
         for registro
         in mart
         if (
@@ -671,7 +781,36 @@ def validar_mart(
         )
 
 
-    divergentes = {
+    # =====================================================
+    # DIVERGENCIA STATUS X PRAZO
+    #
+    # A divergencia continua sendo monitorada,
+    # mas seus IDs nao sao hard-coded.
+    # =====================================================
+
+    flags_divergencia = {
+        registro[
+            "divergencia_status_prazo"
+        ]
+        for registro
+        in mart
+    }
+
+
+    if not flags_divergencia.issubset(
+        {
+            0,
+            1,
+        }
+    ):
+
+        raise RuntimeError(
+            "divergencia_status_prazo "
+            "possui valor diferente de 0 ou 1."
+        )
+
+
+    divergentes = sorted(
         str(
             registro[
                 "plano_id"
@@ -683,29 +822,53 @@ def validar_mart(
             "divergencia_status_prazo"
         ]
         == 1
-    }
+    )
 
 
-    if divergentes != {
-        "509",
-        "290",
-    }:
+    # =====================================================
+    # RESUMO DO QUALITY GATE
+    # =====================================================
 
-        raise RuntimeError(
-            "Conjunto inesperado de divergencias "
-            "status x prazo: "
-            f"{sorted(divergentes)}"
-        )
-
-
+    print()
     print(
         "Quality Gate da Ouro: APROVADO"
     )
 
+    print(
+        "Registros:",
+        len(mart),
+    )
 
-# =========================================================
-# ESCRITA ATOMICA
-# =========================================================
+    print(
+        "Grupos SSO:",
+        dict(grupos),
+    )
+
+    print(
+        "Metodos de classificacao:",
+        dict(metodos),
+    )
+
+    print(
+        "Estados:",
+        dict(estados),
+    )
+
+    print(
+        "Divergencias status x prazo:",
+        len(divergentes),
+    )
+
+
+    if divergentes:
+
+        print(
+            "Planos divergentes:",
+            ", ".join(
+                divergentes
+            ),
+        )
+
 
 def escrever_mart(
     mart,

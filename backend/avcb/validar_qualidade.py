@@ -26,7 +26,7 @@ PASTA_RELATORIOS = (
     / "relatorios"
 )
 
-NOME_ABA_AVCB = "Em Criação"
+NOME_ABA_AVCB = "Oficial"
 
 NUMERO_COLUNAS_ESPERADO = 16
 
