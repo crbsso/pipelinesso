@@ -57,8 +57,10 @@ if (userError || !user) {
   );
 
   const { data, error } = await supabaseAdmin
-    .from("mart_planos_acao")
-    .select("*")
+    .from("vw_portal_planos_acao")
+    .select(
+      "modulo_origem,cronograma_plano,nivel_organizacional,flag_ativo_fonte,dias_para_prazo,dias_em_atraso_calculado,situacao_prazo_calculada,situacao_gerencial,flag_vence_hoje,grupo_sso,gestor_exibicao",
+    )
     .order(
       "cronograma_plano",
       {

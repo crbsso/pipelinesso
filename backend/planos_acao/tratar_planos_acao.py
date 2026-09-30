@@ -164,6 +164,7 @@ def carregar_mapa_colaboradores():
             "cod_colaborador",
             "nome_normalizado",
             "nome_completo_rm",
+            "nome_exibicao",
             "secao_rm",
             "elegivel_planos_acao",
             "origem_registro",
@@ -231,6 +232,13 @@ def carregar_mapa_colaboradores():
                     texto_limpo(
                         linha.get(
                             "nome_completo_rm"
+                        )
+                    ),
+
+                "nome_exibicao":
+                    texto_limpo(
+                        linha.get(
+                            "nome_exibicao"
                         )
                     ),
 
@@ -759,14 +767,14 @@ def classificar_sso(
         gestor
     )
 
-
     if not gestor_norm:
 
         return (
             None,
             "SEM_GESTOR",
+            None,
+            None,
         )
-
 
     if gestor_norm in mapa_colaboradores:
 
@@ -788,8 +796,9 @@ def classificar_sso(
         return (
             None,
             "SEM_IDENTIDADE_RM",
+            None,
+            None,
         )
-
 
     cadastro = (
         mapa_colaboradores[
@@ -797,6 +806,35 @@ def classificar_sso(
         ]
     )
 
+    nome_canonico = texto_limpo(
+        cadastro[
+            "nome_completo_rm"
+        ]
+    )
+
+    if not nome_canonico:
+
+        return (
+            None,
+            "NOME_RM_NAO_RESOLVIDO",
+            None,
+            None,
+        )
+
+    nome_exibicao = texto_limpo(
+        cadastro[
+            "nome_exibicao"
+        ]
+    )
+
+    if not nome_exibicao:
+
+        return (
+            None,
+            "NOME_EXIBICAO_NAO_RESOLVIDO",
+            nome_canonico,
+            None,
+        )
 
     if (
         cadastro[
@@ -808,8 +846,9 @@ def classificar_sso(
         return (
             None,
             "NAO_ELEGIVEL_RM",
+            nome_canonico,
+            nome_exibicao,
         )
-
 
     secao = texto_limpo(
         cadastro[
@@ -817,19 +856,18 @@ def classificar_sso(
         ]
     )
 
-
     if not secao:
 
         return (
             None,
             "SECAO_RM_NAO_RESOLVIDA",
+            nome_canonico,
+            nome_exibicao,
         )
-
 
     secao_norm = normalizar(
         secao
     )
-
 
     if (
         secao_norm
@@ -842,10 +880,11 @@ def classificar_sso(
 
         grupo = "OUTRAS_AREAS"
 
-
     return (
         grupo,
         metodo,
+        nome_canonico,
+        nome_exibicao,
     )
 
 def preparar_prata(
@@ -865,7 +904,7 @@ def preparar_prata(
         ]
 
 
-        grupo_sso, metodo = (
+        grupo_sso, metodo, gestor_canonico, gestor_exibicao = (
             classificar_sso(
                 origem.get(
                     "gestor de plano"
@@ -984,11 +1023,10 @@ def preparar_prata(
                     ],
 
                 "gestor_plano":
-                    texto_limpo(
-                        origem.get(
-                            "gestor de plano"
-                        )
-                    ),
+                    gestor_canonico,
+
+                "gestor_exibicao":
+                    gestor_exibicao,
 
                 "descricao_plano":
                     texto_limpo(
