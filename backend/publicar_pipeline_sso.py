@@ -33,6 +33,10 @@ from backend.planos_acao import (
     publicar_ouro_planos_acao as planos,
 )
 
+from backend.motoristas import (
+    publicar_ouro_motoristas as motoristas,
+)
+
 
 RPC_GLOBAL = "promover_pipeline_sso"
 
@@ -55,16 +59,21 @@ def criar_cliente():
         planos.carregar_configuracao()
     )
 
+    url_motoristas, secret_motoristas = (
+        motoristas.carregar_configuracao()
+    )
+
     urls = {
         url_inspecoes,
         url_avcb,
         url_planos,
+        url_motoristas,
     }
 
     if len(urls) != 1:
 
         raise RuntimeError(
-            "Inspecoes, AVCB e Planos de Acao "
+            "Inspecoes, AVCB, Planos de Acao e Motoristas "
             "apontam para Supabase diferentes."
         )
 
@@ -72,12 +81,13 @@ def criar_cliente():
         secret_inspecoes,
         secret_avcb,
         secret_planos,
+        secret_motoristas,
     }
 
     if len(secrets) != 1:
 
         raise RuntimeError(
-            "Inspecoes, AVCB e Planos de Acao "
+            "Inspecoes, AVCB, Planos de Acao e Motoristas "
             "utilizam credenciais diferentes."
         )
 
@@ -103,6 +113,16 @@ def carregar_ouros():
 
     registros_planos = (
         planos.carregar_ouro()
+    )
+
+    ouros_motoristas = (
+        motoristas.carregar_ouro()
+    )
+
+    contagens_motoristas = (
+        motoristas.validar_local(
+            ouros_motoristas
+        )
     )
 
     if not registros_inspecoes:
@@ -134,6 +154,8 @@ def carregar_ouros():
         registros_avcb,
         registros_planos,
         indicadores_planos,
+        ouros_motoristas,
+        contagens_motoristas,
     )
 
 
@@ -241,6 +263,14 @@ def validar_estado_remoto_inicial(
             "Publicacao global bloqueada."
         )
 
+    motoristas.validar_estado_remoto_inicial(
+        cliente
+    )
+
+    print(
+        "   Stagings Motoristas: LIMPAS"
+    )
+
 
 # =========================================================
 # RPC GLOBAL
@@ -254,6 +284,8 @@ def promover_globalmente(
     quantidade_avcb,
     carga_planos_acao,
     quantidade_planos_acao,
+    carga_motoristas,
+    quantidades_motoristas,
 ):
 
     resposta = (
@@ -273,6 +305,12 @@ def promover_globalmente(
                     carga_planos_acao,
                 "p_quantidade_planos_acao":
                     quantidade_planos_acao,
+
+                "p_carga_motoristas":
+                    carga_motoristas,
+
+                "p_quantidades_motoristas":
+                    quantidades_motoristas,
             },
         )
         .execute()
@@ -305,6 +343,12 @@ def promover_globalmente(
     planos_publicados = (
         retorno.get(
             "planos_acao"
+        )
+    )
+
+    motoristas_publicados = (
+        retorno.get(
+            "motoristas"
         )
     )
 
@@ -341,6 +385,37 @@ def promover_globalmente(
             "para Planos de Acao."
         )
 
+    if not isinstance(
+        motoristas_publicados,
+        dict,
+    ):
+
+        raise RuntimeError(
+            "RPC global retornou "
+            "Motoristas em formato inesperado."
+        )
+
+    for (
+        aba,
+        esperado,
+    ) in quantidades_motoristas.items():
+
+        atual = (
+            motoristas_publicados.get(
+                aba
+            )
+        )
+
+        if atual != esperado:
+
+            raise RuntimeError(
+                "RPC global retornou "
+                "quantidade divergente "
+                f"para Motoristas/{aba}. "
+                f"Esperado={esperado}; "
+                f"Retornado={atual}"
+            )
+
     return retorno
 
 
@@ -365,6 +440,8 @@ def publicar(
         registros_avcb,
         registros_planos,
         indicadores_planos,
+        ouros_motoristas,
+        contagens_motoristas,
     ) = carregar_ouros()
 
     print(
@@ -381,6 +458,19 @@ def publicar(
         "   Planos de Acao:",
         len(registros_planos),
     )
+
+    print(
+        "   Motoristas:"
+    )
+
+    for (
+        aba,
+        quantidade,
+    ) in contagens_motoristas.items():
+
+        print(
+            f"      {aba}: {quantidade}"
+        )
 
     print(
         "\n2. Conectando ao Supabase..."
@@ -426,9 +516,14 @@ def publicar(
         uuid.uuid4()
     )
 
+    carga_motoristas = str(
+        uuid.uuid4()
+    )
+
     staging_inspecoes_enviada = False
     buffer_avcb_enviado = False
     staging_planos_enviada = False
+    staging_motoristas_enviada = False
 
     try:
 
@@ -542,7 +637,41 @@ def publicar(
         )
 
         print(
-            "\n9. Executando promocao "
+            "\n9. Enviando stagings "
+            "de Motoristas..."
+        )
+
+        print(
+            "   carga_id:",
+            carga_motoristas,
+        )
+
+        motoristas.enviar_staging(
+            cliente,
+            carga_motoristas,
+            ouros_motoristas,
+        )
+
+        staging_motoristas_enviada = True
+
+        print(
+            "\n10. Validando stagings "
+            "de Motoristas..."
+        )
+
+        motoristas.validar_staging(
+            cliente,
+            carga_motoristas,
+            contagens_motoristas,
+        )
+
+        print(
+            "   Stagings de Motoristas "
+            "validadas."
+        )
+
+        print(
+            "\n11. Executando promocao "
             "global atomica..."
         )
 
@@ -556,6 +685,8 @@ def publicar(
             indicadores_planos[
                 "total"
             ],
+            carga_motoristas,
+            contagens_motoristas,
         )
 
         print(
@@ -568,7 +699,7 @@ def publicar(
         )
 
         print(
-            "\n10. Validando Mart "
+            "\n14. Validando Mart "
             "de Inspecoes..."
         )
 
@@ -583,7 +714,7 @@ def publicar(
         )
 
         print(
-            "\n11. Validando Mart AVCB..."
+            "\n13. Validando Mart AVCB..."
         )
 
         avcb.validar_mart(
@@ -596,7 +727,7 @@ def publicar(
         )
 
         print(
-            "\n12. Validando Mart "
+            "\n14. Validando Mart "
             "de Planos de Acao..."
         )
 
@@ -611,7 +742,22 @@ def publicar(
         )
 
         print(
-            "\n13. Limpando staging "
+            "\n15. Validando marts "
+            "de Motoristas..."
+        )
+
+        motoristas.validar_marts_remotas(
+            cliente,
+            ouros_motoristas,
+        )
+
+        print(
+            "   Marts de Motoristas "
+            "validadas."
+        )
+
+        print(
+            "\n16. Limpando staging "
             "de Inspecoes..."
         )
 
@@ -625,7 +771,7 @@ def publicar(
         )
 
         print(
-            "\n14. Limpando buffer AVCB..."
+            "\n17. Limpando buffer AVCB..."
         )
 
         avcb.limpar_buffer(
@@ -638,7 +784,7 @@ def publicar(
         )
 
         print(
-            "\n15. Limpando staging "
+            "\n18. Limpando staging "
             "de Planos de Acao..."
         )
 
@@ -649,6 +795,21 @@ def publicar(
 
         print(
             "   Staging de Planos de Acao limpa."
+        )
+
+        print(
+            "\n19. Limpando stagings "
+            "de Motoristas..."
+        )
+
+        motoristas.limpar_staging(
+            cliente,
+            carga_motoristas,
+        )
+
+        print(
+            "   Stagings de Motoristas "
+            "limpas."
         )
 
     except Exception:
@@ -701,6 +862,18 @@ def publicar(
                 carga_planos_acao,
             )
 
+        if staging_motoristas_enviada:
+
+            print(
+                "Stagings de Motoristas "
+                "preservadas para diagnostico."
+            )
+
+            print(
+                "carga_id Motoristas:",
+                carga_motoristas,
+            )
+
         raise
 
     print()
@@ -743,6 +916,10 @@ def publicar(
     )
 
     print(
+        "Stagings Motoristas: LIMPAS"
+    )
+
+    print(
         "Arquivos locais: PRESERVADOS"
     )
 
@@ -755,7 +932,7 @@ def main():
 
     parser = argparse.ArgumentParser(
         description=(
-            "Publica Inspecoes, AVCB e Planos de Acao "
+            "Publica Inspecoes, AVCB, Planos de Acao e Motoristas "
             "atomicamente no Supabase."
         )
     )
