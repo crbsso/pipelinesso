@@ -107,7 +107,7 @@ function nomeMes(
 
 type TipoAcao =
   | "PLANO_ACAO"
-  | "TAREFA";
+  | "ACAO_CORRETIVA";
 
 type Aba =
   | "TODOS"
@@ -986,7 +986,7 @@ export default function PlanosAcaoPage() {
         </h1>
 
         <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-          Acompanhamento gerencial de Planos de Ação e Tarefas do SSO.
+          Acompanhamento gerencial de Planos de Ação e Ações Corretivas do SSO.
         </p>
       </div>
 
@@ -1005,14 +1005,14 @@ export default function PlanosAcaoPage() {
         />
 
         <AbaButton
-          label="Tarefa"
+          label="Ação Corretiva"
           ativo={
             tipoAcao ===
-            "TAREFA"
+            "ACAO_CORRETIVA"
           }
           onClick={() =>
             selecionarTipoAcao(
-              "TAREFA",
+              "ACAO_CORRETIVA",
             )
           }
         />
@@ -1060,14 +1060,14 @@ export default function PlanosAcaoPage() {
       </div>
 
       {tipoAcao ===
-        "TAREFA" && (
+        "ACAO_CORRETIVA" && (
         <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-white/[0.03]">
           <h2 className="text-base font-semibold text-gray-900 dark:text-white">
-            Mapeamento de Tarefas do PREVSYS
+            Mapeamento de Ações Corretivas do PREVSYS
           </h2>
 
           <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-            A estrutura do módulo está preparada. Os dados de Tarefas serão integrados após o mapeamento da fonte, dos campos e das regras de classificação entre Segurança e Outras Áreas.
+            A estrutura do módulo está preparada. Os dados de Ações Corretivas serão integrados após o mapeamento da fonte, dos campos e das regras de classificação entre Segurança e Outras Áreas.
           </p>
         </div>
       )}
