@@ -10,6 +10,8 @@ import {
 
 import type { ApexOptions } from "apexcharts";
 
+import AcoesCorretivasPainel from "./AcoesCorretivasPainel";
+
 const Chart = dynamic(
   () => import("react-apexcharts"),
   {
@@ -1061,15 +1063,9 @@ export default function PlanosAcaoPage() {
 
       {tipoAcao ===
         "ACAO_CORRETIVA" && (
-        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-white/[0.03]">
-          <h2 className="text-base font-semibold text-gray-900 dark:text-white">
-            Mapeamento de Ações Corretivas do PREVSYS
-          </h2>
-
-          <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-            A estrutura do módulo está preparada. Os dados de Ações Corretivas serão integrados após o mapeamento da fonte, dos campos e das regras de classificação entre Segurança e Outras Áreas.
-          </p>
-        </div>
+        <AcoesCorretivasPainel
+          aba={aba}
+        />
       )}
 
       {tipoAcao ===

@@ -61,6 +61,8 @@ COLUNAS_OURO = [
 
     "gestor_plano",
     "responsavel_acao",
+    "responsavel_exibicao",
+    "metodo_identidade_responsavel",
 
     "estado_plano",
     "estado_acao_fonte",
@@ -559,6 +561,20 @@ def transformar(
             limpar(
                 registro.get(
                     "responsavel_acao"
+                )
+            ),
+
+        "responsavel_exibicao":
+            limpar(
+                registro.get(
+                    "responsavel_exibicao"
+                )
+            ),
+
+        "metodo_identidade_responsavel":
+            limpar(
+                registro.get(
+                    "metodo_identidade_responsavel"
                 )
             ),
 

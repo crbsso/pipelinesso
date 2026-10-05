@@ -1,4 +1,6 @@
 from pathlib import Path
+import csv
+import json
 from collections import Counter, defaultdict
 from decimal import Decimal, InvalidOperation
 from datetime import datetime
@@ -69,6 +71,8 @@ COLUNAS_SAIDA = [
     "pergunta",
     "descricao_acao",
     "responsavel_acao",
+    "responsavel_exibicao",
+    "metodo_identidade_responsavel",
     "estado_acao",
     "estado_aprovacao",
     "oficial_aprovacao",
@@ -697,6 +701,857 @@ def consolidar(
     return consolidados
 
 
+
+# =========================================================
+# IDENTIDADE DO RESPONSAVEL DA ACAO
+# =========================================================
+
+def normalizar_identidade(
+    valor,
+):
+
+    if valor is None:
+        return ""
+
+    texto = unicodedata.normalize(
+        "NFKD",
+        str(valor),
+    )
+
+    texto = "".join(
+        caractere
+        for caractere in texto
+        if not unicodedata.combining(
+            caractere
+        )
+    )
+
+    texto = re.sub(
+        r"\s+",
+        " ",
+        texto,
+    )
+
+    return (
+        texto
+        .strip()
+        .lower()
+    )
+
+
+
+def carregar_mapa_responsaveis():
+
+    arquivo = (
+        RAIZ
+        / "data"
+        / "master"
+        / "colaboradores"
+        / "mapa_colaboradores.csv"
+    )
+
+    if not arquivo.exists():
+
+        raise RuntimeError(
+            "Mapa de colaboradores nao encontrado: "
+            + str(
+                arquivo
+            )
+        )
+
+
+    mapa = {}
+
+
+    with arquivo.open(
+        "r",
+        encoding="utf-8-sig",
+        newline="",
+    ) as arquivo_csv:
+
+        leitor = csv.DictReader(
+            arquivo_csv,
+            delimiter=";",
+        )
+
+        campos = set(
+            leitor.fieldnames
+            or []
+        )
+
+        obrigatorios = {
+            "nome_normalizado",
+            "nome_completo_rm",
+            "nome_exibicao",
+            "secao_rm",
+        }
+
+        ausentes = (
+            obrigatorios
+            - campos
+        )
+
+        if ausentes:
+
+            raise RuntimeError(
+                "Mapa RM sem colunas obrigatorias: "
+                + ", ".join(
+                    sorted(
+                        ausentes
+                    )
+                )
+            )
+
+
+        for linha in leitor:
+
+            nome_completo = (
+                linha.get(
+                    "nome_completo_rm"
+                )
+                or ""
+            ).strip()
+
+            nome_exibicao = (
+                linha.get(
+                    "nome_exibicao"
+                )
+                or ""
+            ).strip()
+
+            secao_rm = (
+                linha.get(
+                    "secao_rm"
+                )
+                or ""
+            ).strip()
+
+
+            if not nome_exibicao:
+                continue
+
+
+            cadastro = {
+                "nome_completo_rm":
+                    nome_completo,
+
+                "nome_exibicao":
+                    nome_exibicao,
+
+                "secao_rm":
+                    secao_rm,
+            }
+
+
+            chaves = {
+                normalizar_identidade(
+                    linha.get(
+                        "nome_normalizado"
+                    )
+                ),
+
+                normalizar_identidade(
+                    nome_completo
+                ),
+            }
+
+
+            for chave in chaves:
+
+                if chave:
+
+                    mapa[
+                        chave
+                    ] = cadastro
+
+
+    if not mapa:
+
+        raise RuntimeError(
+            "Mapa RM de responsaveis vazio."
+        )
+
+
+    return mapa
+
+
+def carregar_aliases_compartilhados(
+    mapa,
+):
+
+    arquivo = (
+        RAIZ
+        / "backend"
+        / "planos_acao"
+        / "config"
+        / "aliases_gestores.json"
+    )
+
+    if not arquivo.exists():
+
+        raise RuntimeError(
+            "Aliases compartilhados nao encontrados: "
+            + str(
+                arquivo
+            )
+        )
+
+
+    with arquivo.open(
+        "r",
+        encoding="utf-8",
+    ) as arquivo_json:
+
+        dados = json.load(
+            arquivo_json
+        )
+
+
+    aliases = {}
+
+
+    for item in dados.get(
+        "aliases",
+        [],
+    ):
+
+        origem = (
+            normalizar_identidade(
+                item.get(
+                    "nome_prevsys"
+                )
+            )
+        )
+
+        destino = (
+            normalizar_identidade(
+                item.get(
+                    "nome_rm"
+                )
+            )
+        )
+
+
+        if not origem:
+            raise RuntimeError(
+                "Alias compartilhado "
+                "sem nome PREVSYS."
+            )
+
+
+        if not destino:
+            raise RuntimeError(
+                "Alias compartilhado "
+                "sem nome RM."
+            )
+
+
+        if destino not in mapa:
+
+            raise RuntimeError(
+                "Destino de alias compartilhado "
+                "nao existe no RM: "
+                + str(
+                    item.get(
+                        "nome_rm"
+                    )
+                )
+            )
+
+
+        if origem in aliases:
+
+            raise RuntimeError(
+                "Alias compartilhado duplicado: "
+                + origem
+            )
+
+
+        aliases[
+            origem
+        ] = destino
+
+
+    return aliases
+
+
+
+def carregar_config_identidade_acoes(
+    mapa,
+):
+
+    arquivo = (
+        RAIZ
+        / "backend"
+        / "acoes_corretivas"
+        / "config"
+        / "responsaveis_identidade.json"
+    )
+
+    if not arquivo.exists():
+
+        raise RuntimeError(
+            "Configuracao de identidade "
+            "de responsaveis nao encontrada: "
+            + str(
+                arquivo
+            )
+        )
+
+
+    with arquivo.open(
+        "r",
+        encoding="utf-8",
+    ) as arquivo_json:
+
+        dados = json.load(
+            arquivo_json
+        )
+
+
+    aliases = {}
+
+
+    for item in dados.get(
+        "aliases_rm",
+        [],
+    ):
+
+        origem = (
+            normalizar_identidade(
+                item.get(
+                    "nome_prevsys"
+                )
+            )
+        )
+
+        destino = (
+            normalizar_identidade(
+                item.get(
+                    "nome_rm"
+                )
+            )
+        )
+
+
+        if not origem or not destino:
+
+            raise RuntimeError(
+                "Alias especifico de "
+                "responsavel incompleto."
+            )
+
+
+        if destino not in mapa:
+
+            raise RuntimeError(
+                "Destino do alias especifico "
+                "nao existe no RM: "
+                + str(
+                    item.get(
+                        "nome_rm"
+                    )
+                )
+            )
+
+
+        aliases[
+            origem
+        ] = destino
+
+
+    externos = {}
+
+
+    for item in dados.get(
+        "exibicao_sem_rm",
+        [],
+    ):
+
+        origem = (
+            normalizar_identidade(
+                item.get(
+                    "nome_prevsys"
+                )
+            )
+        )
+
+        exibicao = (
+            item.get(
+                "nome_exibicao"
+            )
+            or ""
+        ).strip()
+
+        grupo_sso = (
+            item.get(
+                "grupo_sso"
+            )
+            or ""
+        ).strip()
+
+
+        if not origem or not exibicao:
+
+            raise RuntimeError(
+                "Exibicao sem RM incompleta."
+            )
+
+
+        if grupo_sso not in {
+            "SEGURANCA",
+            "OUTRAS_AREAS",
+        }:
+
+            raise RuntimeError(
+                "grupo_sso invalido para "
+                "responsavel sem RM: "
+                + str(
+                    item.get(
+                        "nome_prevsys"
+                    )
+                )
+            )
+
+
+        externos[
+            origem
+        ] = {
+            "nome_exibicao":
+                exibicao,
+
+            "grupo_sso":
+                grupo_sso,
+        }
+
+
+    return (
+        aliases,
+        externos,
+    )
+
+
+
+def enriquecer_identidade_responsaveis(
+    registros,
+):
+
+    mapa = (
+        carregar_mapa_responsaveis()
+    )
+
+    aliases_compartilhados = (
+        carregar_aliases_compartilhados(
+            mapa
+        )
+    )
+
+    (
+        aliases_acoes,
+        externos,
+    ) = (
+        carregar_config_identidade_acoes(
+            mapa
+        )
+    )
+
+
+    contadores_identidade = Counter()
+    contadores_classificacao = Counter()
+
+
+    for registro in registros:
+
+        responsavel = str(
+            registro.get(
+                "responsavel_acao"
+            )
+            or ""
+        ).strip()
+
+        chave = (
+            normalizar_identidade(
+                responsavel
+            )
+        )
+
+
+        if not chave:
+
+            raise RuntimeError(
+                "Acao sem responsavel: "
+                + str(
+                    registro.get(
+                        "acao_corretiva_id"
+                    )
+                )
+            )
+
+
+        cadastro = None
+        exibicao = None
+        grupo_sso = None
+        metodo_identidade = None
+        metodo_classificacao = None
+
+
+        if chave in mapa:
+
+            cadastro = mapa[
+                chave
+            ]
+
+            metodo_identidade = (
+                "MAPA_RM_EXATO"
+            )
+
+
+        elif chave in aliases_compartilhados:
+
+            destino = (
+                aliases_compartilhados[
+                    chave
+                ]
+            )
+
+            cadastro = mapa[
+                destino
+            ]
+
+            metodo_identidade = (
+                "MAPA_RM_ALIAS_COMPARTILHADO"
+            )
+
+
+        elif chave in aliases_acoes:
+
+            destino = (
+                aliases_acoes[
+                    chave
+                ]
+            )
+
+            cadastro = mapa[
+                destino
+            ]
+
+            metodo_identidade = (
+                "MAPA_RM_ALIAS_ACAO"
+            )
+
+
+        elif chave in externos:
+
+            exibicao = (
+                externos[
+                    chave
+                ][
+                    "nome_exibicao"
+                ]
+            )
+
+            grupo_sso = (
+                externos[
+                    chave
+                ][
+                    "grupo_sso"
+                ]
+            )
+
+            metodo_identidade = (
+                "PREVSYS_SEM_RM"
+            )
+
+            metodo_classificacao = (
+                "CONFIG_RESPONSAVEL_SEM_RM"
+            )
+
+
+        else:
+
+            raise RuntimeError(
+                "Responsavel sem identidade "
+                "controlada: "
+                + responsavel
+                + " | acao_id="
+                + str(
+                    registro.get(
+                        "acao_corretiva_id"
+                    )
+                )
+            )
+
+
+        if cadastro is not None:
+
+            exibicao = (
+                cadastro[
+                    "nome_exibicao"
+                ]
+            )
+
+            secao_rm = str(
+                cadastro.get(
+                    "secao_rm"
+                )
+                or ""
+            ).strip()
+
+
+            if not secao_rm:
+
+                raise RuntimeError(
+                    "Responsavel RM sem secao: "
+                    + responsavel
+                    + " | acao_id="
+                    + str(
+                        registro.get(
+                            "acao_corretiva_id"
+                        )
+                    )
+                )
+
+
+            secao_norm = (
+                normalizar_identidade(
+                    secao_rm
+                )
+            )
+
+
+            if (
+                secao_norm
+                == "seguranca e saude ocupacional"
+            ):
+
+                grupo_sso = (
+                    "SEGURANCA"
+                )
+
+            else:
+
+                grupo_sso = (
+                    "OUTRAS_AREAS"
+                )
+
+
+            metodo_classificacao = (
+                "SECAO_RM_RESPONSAVEL"
+            )
+
+
+        registro[
+            "responsavel_exibicao"
+        ] = str(
+            exibicao
+            or ""
+        ).strip()
+
+        registro[
+            "metodo_identidade_responsavel"
+        ] = metodo_identidade
+
+        registro[
+            "grupo_sso"
+        ] = grupo_sso
+
+        registro[
+            "metodo_classificacao"
+        ] = metodo_classificacao
+
+
+        if not registro[
+            "responsavel_exibicao"
+        ]:
+
+            raise RuntimeError(
+                "responsavel_exibicao vazio: "
+                + responsavel
+            )
+
+
+        contadores_identidade[
+            metodo_identidade
+        ] += 1
+
+        contadores_classificacao[
+            metodo_classificacao
+        ] += 1
+
+
+    return (
+        contadores_identidade,
+        contadores_classificacao,
+    )
+
+
+
+def validar_identidade_responsaveis(
+    registros,
+    contadores_identidade,
+    contadores_classificacao,
+):
+
+    esperados_identidade = {
+        "MAPA_RM_EXATO": 466,
+        "MAPA_RM_ALIAS_COMPARTILHADO": 127,
+        "MAPA_RM_ALIAS_ACAO": 19,
+        "PREVSYS_SEM_RM": 1,
+    }
+
+    esperados_classificacao = {
+        "SECAO_RM_RESPONSAVEL": 612,
+        "CONFIG_RESPONSAVEL_SEM_RM": 1,
+    }
+
+
+    if dict(
+        contadores_identidade
+    ) != esperados_identidade:
+
+        raise RuntimeError(
+            "Identidade divergente: "
+            + str(
+                dict(
+                    contadores_identidade
+                )
+            )
+        )
+
+
+    if dict(
+        contadores_classificacao
+    ) != esperados_classificacao:
+
+        raise RuntimeError(
+            "Classificacao divergente: "
+            + str(
+                dict(
+                    contadores_classificacao
+                )
+            )
+        )
+
+
+    grupos = Counter(
+        str(
+            registro.get(
+                "grupo_sso"
+            )
+            or ""
+        ).strip()
+        for registro in registros
+    )
+
+
+    esperado_grupos = {
+        "OUTRAS_AREAS": 388,
+        "SEGURANCA": 225,
+    }
+
+
+    if dict(
+        grupos
+    ) != esperado_grupos:
+
+        raise RuntimeError(
+            "grupo_sso divergente: "
+            + str(
+                dict(
+                    grupos
+                )
+            )
+        )
+
+
+    por_id = {
+        str(
+            registro.get(
+                "acao_corretiva_id"
+            )
+            or ""
+        ).strip():
+            registro
+        for registro
+        in registros
+    }
+
+
+    if (
+        por_id["52"][
+            "grupo_sso"
+        ]
+        != "OUTRAS_AREAS"
+    ):
+
+        raise RuntimeError(
+            "Acao 52 deveria estar "
+            "em OUTRAS_AREAS."
+        )
+
+
+    if (
+        por_id["1148"][
+            "grupo_sso"
+        ]
+        != "SEGURANCA"
+    ):
+
+        raise RuntimeError(
+            "Acao 1148 deveria estar "
+            "em SEGURANCA."
+        )
+
+
+    if (
+        por_id["786"][
+            "grupo_sso"
+        ]
+        != "OUTRAS_AREAS"
+    ):
+
+        raise RuntimeError(
+            "Acao 786 deveria estar "
+            "em OUTRAS_AREAS."
+        )
+
+
+    print()
+    print(
+        "Identidade dos responsaveis:"
+    )
+
+    for metodo, qtd in (
+        esperados_identidade.items()
+    ):
+
+        print(
+            f"  {metodo}: "
+            f"{contadores_identidade[metodo]}"
+        )
+
+
+    print()
+    print(
+        "Classificacao pelo responsavel:"
+    )
+
+    print(
+        "  SECAO_RM_RESPONSAVEL: 612"
+    )
+
+    print(
+        "  CONFIG_RESPONSAVEL_SEM_RM: 1"
+    )
+
+    print(
+        "  OUTRAS_AREAS: 388"
+    )
+
+    print(
+        "  SEGURANCA: 225"
+    )
+
 # =========================================================
 # QUALITY GATE
 # =========================================================
@@ -930,6 +1785,21 @@ def main():
 
     consolidados = consolidar(
         elegiveis
+    )
+
+    (
+        contadores_identidade,
+        contadores_classificacao,
+    ) = (
+        enriquecer_identidade_responsaveis(
+            consolidados
+        )
+    )
+
+    validar_identidade_responsaveis(
+        consolidados,
+        contadores_identidade,
+        contadores_classificacao,
     )
 
     validar_prata(

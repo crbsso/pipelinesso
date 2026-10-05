@@ -1,0 +1,19 @@
+{
+  "aliases_rm": [
+    {
+      "nome_prevsys": "TIAGO CRISTÓVÃO MARTINS DOS SANTOS",
+      "nome_rm": "TIAGO CRISTOPHER MARTINS DOS SANTOS"
+    },
+    {
+      "nome_prevsys": "TUBO RAONI",
+      "nome_rm": "RAONI ROHR"
+    }
+  ],
+  "exibicao_sem_rm": [
+    {
+      "nome_prevsys": "Geraldine Ordoñez",
+      "nome_exibicao": "Geraldine Ordoñez",
+      "grupo_sso": "OUTRAS_AREAS"
+    }
+  ]
+}

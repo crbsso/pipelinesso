@@ -65,6 +65,8 @@ COLUNAS_ESPERADAS = [
     "metodo_classificacao",
     "gestor_plano",
     "responsavel_acao",
+    "responsavel_exibicao",
+    "metodo_identidade_responsavel",
     "estado_plano",
     "estado_acao_fonte",
     "flag_ativo_fonte",
@@ -122,6 +124,142 @@ COLUNAS_ID_TEXTO = {
     "acao_corretiva_id",
     "plano_id",
 }
+
+
+
+# =========================================================
+# IDENTIDADE DO RESPONSAVEL
+# =========================================================
+
+def validar_identidade_publicacao(
+    registros,
+):
+
+    esperados = {
+        "MAPA_RM_EXATO": 466,
+        "MAPA_RM_ALIAS_COMPARTILHADO": 127,
+        "MAPA_RM_ALIAS_ACAO": 19,
+        "PREVSYS_SEM_RM": 1,
+    }
+
+
+    contadores = {
+        chave: 0
+        for chave
+        in esperados
+    }
+
+
+    sem_exibicao = []
+    sem_metodo = []
+    metodo_invalido = []
+
+
+    for registro in registros:
+
+        acao_id = str(
+            registro.get(
+                "acao_corretiva_id"
+            )
+            or ""
+        ).strip()
+
+
+        exibicao = str(
+            registro.get(
+                "responsavel_exibicao"
+            )
+            or ""
+        ).strip()
+
+
+        metodo = str(
+            registro.get(
+                "metodo_identidade_responsavel"
+            )
+            or ""
+        ).strip()
+
+
+        if not exibicao:
+
+            sem_exibicao.append(
+                acao_id
+            )
+
+
+        if not metodo:
+
+            sem_metodo.append(
+                acao_id
+            )
+
+            continue
+
+
+        if metodo not in esperados:
+
+            metodo_invalido.append(
+                (
+                    acao_id,
+                    metodo,
+                )
+            )
+
+            continue
+
+
+        contadores[
+            metodo
+        ] += 1
+
+
+    if sem_exibicao:
+
+        raise RuntimeError(
+            "Acoes sem responsavel_exibicao: "
+            + str(
+                sem_exibicao[:20]
+            )
+        )
+
+
+    if sem_metodo:
+
+        raise RuntimeError(
+            "Acoes sem metodo de identidade: "
+            + str(
+                sem_metodo[:20]
+            )
+        )
+
+
+    if metodo_invalido:
+
+        raise RuntimeError(
+            "Metodo de identidade invalido: "
+            + str(
+                metodo_invalido[:20]
+            )
+        )
+
+
+    if contadores != esperados:
+
+        raise RuntimeError(
+            "Distribuicao da identidade "
+            "divergente. Obtido: "
+            + str(
+                contadores
+            )
+            + " | Esperado: "
+            + str(
+                esperados
+            )
+        )
+
+
+    return contadores
 
 
 # =========================================================
@@ -371,6 +509,12 @@ def carregar_ouro():
                 registro
             )
 
+        contadores_identidade_publicacao = (
+            validar_identidade_publicacao(
+                registros
+            )
+        )
+
         return registros
 
     finally:
@@ -440,8 +584,8 @@ def validar_local(
     )
 
     esperado_grupos = {
-        "OUTRAS_AREAS": 333,
-        "SEGURANCA": 280,
+        "OUTRAS_AREAS": 388,
+        "SEGURANCA": 225,
     }
 
     if dict(
@@ -709,8 +853,8 @@ def validar_resumo_remoto(
     if dict(
         grupos
     ) != {
-        "OUTRAS_AREAS": 333,
-        "SEGURANCA": 280,
+        "OUTRAS_AREAS": 388,
+        "SEGURANCA": 225,
     }:
 
         raise RuntimeError(
