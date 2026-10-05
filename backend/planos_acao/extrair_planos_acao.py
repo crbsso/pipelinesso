@@ -1014,9 +1014,7 @@ def abrir_menu_planos_acao(page):
         if titulo is not None:
 
             print(
-                "Visual "
-                "'Planos de acao detalhados' "
-                "encontrado."
+                f"Visual '{nome_visual}' encontrado."
             )
 
             print(
@@ -1262,8 +1260,7 @@ def abrir_menu_planos_acao(page):
     # =====================================================
 
     print(
-        "Preparando menu de "
-        "'Planos de acao detalhados'..."
+        f"Preparando menu de '{nome_visual}'..."
     )
 
 
