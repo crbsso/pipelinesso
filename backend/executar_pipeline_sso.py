@@ -31,6 +31,69 @@ ETAPAS = [
         / "gerar_mapa_colaboradores.py",
     ),
     (
+        "MOTORISTAS - EXTRACAO CADASTRO COBLI",
+        RAIZ
+        / "backend"
+        / "motoristas"
+        / "extrair_cobli_motoristas.py",
+    ),
+    (
+        "MOTORISTAS - CAMADA PRATA CADASTRO",
+        RAIZ
+        / "backend"
+        / "motoristas"
+        / "tratar_motoristas.py",
+    ),
+    (
+        "MOTORISTAS - QUALITY GATE CADASTRO",
+        RAIZ
+        / "backend"
+        / "motoristas"
+        / "validar_prata_motoristas.py",
+    ),
+    (
+        "MOTORISTAS - EXTRACOES COBLI SINCRONIZADAS",
+        RAIZ
+        / "backend"
+        / "motoristas"
+        / "executar_extracoes_cobli_sincronizadas.py",
+    ),
+    (
+        "MOTORISTAS - CAMADA PRATA VIAGENS",
+        RAIZ
+        / "backend"
+        / "motoristas"
+        / "tratar_motorista_veiculo.py",
+    ),
+    (
+        "MOTORISTAS - QUALITY GATE VIAGENS",
+        RAIZ
+        / "backend"
+        / "motoristas"
+        / "validar_prata_motorista_veiculo.py",
+    ),
+    (
+        "MOTORISTAS - CAMADA PRATA SEGURANCA",
+        RAIZ
+        / "backend"
+        / "motoristas"
+        / "tratar_seguranca_motoristas.py",
+    ),
+    (
+        "MOTORISTAS - QUALITY GATE SEGURANCA",
+        RAIZ
+        / "backend"
+        / "motoristas"
+        / "validar_prata_seguranca_motoristas.py",
+    ),
+    (
+        "MOTORISTAS - CAMADA OURO",
+        RAIZ
+        / "backend"
+        / "motoristas"
+        / "gerar_ouro_motoristas.py",
+    ),
+    (
         "PREVSYS - EXTRACOES",
         RAIZ
         / "backend"
@@ -146,6 +209,21 @@ def executar_etapa(
 
 ARQUIVOS_OPERACIONAIS = [
     Path(
+        r"prata\motoristas\motoristas.csv"
+    ),
+    Path(
+        r"prata\motoristas\revisao_nomes_motoristas.csv"
+    ),
+    Path(
+        r"prata\motoristas\motorista_veiculo.csv"
+    ),
+    Path(
+        r"prata\motoristas\seguranca_motoristas.csv"
+    ),
+    Path(
+        r"ouro\motoristas\mart_motoristas.xlsx"
+    ),
+    Path(
         r"bronze\avcb\Controle de AVCB.xlsx"
     ),
     Path(
@@ -234,6 +312,30 @@ def arquivos_conhecidos():
     conhecidos.update(
         arquivos_temporarios()
     )
+
+    # Bronzes Cobli possuem timestamp no nome.
+    # Apenas os tres contratos conhecidos de Motoristas
+    # pertencem a fronteira de cleanup.
+
+    pasta_bronze_motoristas = (
+        DATA
+        / "bronze"
+        / "motoristas"
+    )
+
+    if pasta_bronze_motoristas.exists():
+
+        for padrao in [
+            "cobli_motoristas_*.json",
+            "cobli_trips_stops_*.json",
+            "cobli_safety_driver_*.json",
+        ]:
+
+            conhecidos.update(
+                pasta_bronze_motoristas.glob(
+                    padrao
+                )
+            )
 
     return conhecidos
 
