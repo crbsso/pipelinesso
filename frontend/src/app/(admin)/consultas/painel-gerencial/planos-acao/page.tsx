@@ -105,6 +105,10 @@ function nomeMes(
   return NOMES_MESES[valor] ?? valor;
 }
 
+type TipoAcao =
+  | "PLANO_ACAO"
+  | "TAREFA";
+
 type Aba =
   | "TODOS"
   | "SEGURANCA"
@@ -276,6 +280,13 @@ export default function PlanosAcaoPage() {
     aba,
     setAba,
   ] = useState<Aba>("TODOS");
+
+  const [
+    tipoAcao,
+    setTipoAcao,
+  ] = useState<TipoAcao>(
+    "PLANO_ACAO",
+  );
 
 
 
@@ -935,6 +946,20 @@ export default function PlanosAcaoPage() {
     },
   };
 
+  function selecionarTipoAcao(
+    novoTipo: TipoAcao,
+  ) {
+    setTipoAcao(
+      novoTipo,
+    );
+
+    setAba(
+      "TODOS",
+    );
+
+    limparFiltros();
+  }
+
   function selecionarAba(
     novaAba: Aba,
   ) {
@@ -957,12 +982,40 @@ export default function PlanosAcaoPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">
-          Planos de Ação
+          Ações
         </h1>
 
         <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-          Acompanhamento gerencial dos Planos de Ação do SSO.
+          Acompanhamento gerencial de Planos de Ação e Tarefas do SSO.
         </p>
+      </div>
+
+      <div className="flex gap-6 overflow-x-auto border-b border-gray-200 dark:border-gray-800">
+        <AbaButton
+          label="Plano de Ação"
+          ativo={
+            tipoAcao ===
+            "PLANO_ACAO"
+          }
+          onClick={() =>
+            selecionarTipoAcao(
+              "PLANO_ACAO",
+            )
+          }
+        />
+
+        <AbaButton
+          label="Tarefa"
+          ativo={
+            tipoAcao ===
+            "TAREFA"
+          }
+          onClick={() =>
+            selecionarTipoAcao(
+              "TAREFA",
+            )
+          }
+        />
       </div>
 
       <div className="flex gap-6 overflow-x-auto border-b border-gray-200 dark:border-gray-800">
@@ -1006,19 +1059,38 @@ export default function PlanosAcaoPage() {
         />
       </div>
 
-      {carregando && (
+      {tipoAcao ===
+        "TAREFA" && (
+        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-white/[0.03]">
+          <h2 className="text-base font-semibold text-gray-900 dark:text-white">
+            Mapeamento de Tarefas do PREVSYS
+          </h2>
+
+          <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+            A estrutura do módulo está preparada. Os dados de Tarefas serão integrados após o mapeamento da fonte, dos campos e das regras de classificação entre Segurança e Outras Áreas.
+          </p>
+        </div>
+      )}
+
+      {tipoAcao ===
+        "PLANO_ACAO" &&
+        carregando && (
         <div className="rounded-2xl border border-gray-200 bg-white p-6 text-sm text-gray-500 shadow-sm dark:border-gray-800 dark:bg-white/[0.03]">
           Carregando Planos de Ação...
         </div>
       )}
 
-      {erro && (
+      {tipoAcao ===
+        "PLANO_ACAO" &&
+        erro && (
         <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-sm text-red-700">
           {erro}
         </div>
       )}
 
-      {!carregando &&
+      {tipoAcao ===
+        "PLANO_ACAO" &&
+        !carregando &&
         !erro && (
           <>
             <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-white/[0.03]">
