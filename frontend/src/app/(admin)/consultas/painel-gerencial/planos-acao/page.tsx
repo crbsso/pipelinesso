@@ -18,7 +18,8 @@ const Chart = dynamic(
 );
 
 type PlanoAcao = {
-  modulo_origem: string | null;
+    plano_id: string;
+modulo_origem: string | null;
   cronograma_plano: string | null;
   nivel_organizacional: string | null;
   flag_ativo_fonte: number;
@@ -1323,6 +1324,11 @@ export default function PlanosAcaoPage() {
                   <thead className="bg-gray-50 dark:bg-gray-800/50">
                     <tr>
 
+                      <th className="whitespace-nowrap px-4 py-3 text-left font-medium">
+                        ID do Plano
+                      </th>
+
+
 
 
 
@@ -1366,16 +1372,20 @@ export default function PlanosAcaoPage() {
 
                   <tbody>
                     {dadosFiltrados.map(
-                      (plano, index) => (
+                      (plano) => (
                         <tr
-                          key={index}
+                          key={plano.plano_id}
                           className="border-t border-gray-100 dark:border-gray-800"
                         >
 
 
 
 
-                          <td className="min-w-48 px-4 py-3">
+                                                    <td className="whitespace-nowrap px-4 py-3 font-medium">
+                            {plano.plano_id}
+                          </td>
+
+<td className="min-w-48 px-4 py-3">
                             {
                               plano.gestor_exibicao ??
                               "—"
@@ -1436,7 +1446,7 @@ export default function PlanosAcaoPage() {
                       <tr>
                         <td
                           colSpan={
-                            11
+                            9
                           }
                           className="px-5 py-10 text-center text-sm text-gray-500"
                         >
