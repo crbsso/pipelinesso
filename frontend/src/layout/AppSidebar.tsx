@@ -52,7 +52,7 @@ const navItems: NavItem[] = [
         path: "/consultas/painel-gerencial/inspecoes",
       },
       {
-        name: "Planos de Ação",
+        name: "Ações",
         path: "/consultas/painel-gerencial/planos-acao",
       },
       {

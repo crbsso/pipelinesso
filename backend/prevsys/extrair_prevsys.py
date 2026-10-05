@@ -18,46 +18,75 @@ if str(RAIZ) not in sys.path:
 
 from backend.inspecoes import extrair_quantidade as inspecoes
 from backend.planos_acao import extrair_planos_acao as planos
+from backend.acoes_corretivas import extrair_acoes_corretivas as acoes_corretivas
 
 
 def validar_configuracao_compartilhada():
 
-    perfil_inspecoes = Path(
-        inspecoes.PROFILE_DIR
-    ).resolve()
+    perfis = {
+        "Inspecoes": Path(
+            inspecoes.PROFILE_DIR
+        ).resolve(),
 
-    perfil_planos = Path(
-        planos.PROFILE_DIR
-    ).resolve()
+        "Planos de Acao": Path(
+            planos.PROFILE_DIR
+        ).resolve(),
 
-    if perfil_inspecoes != perfil_planos:
+        "Acoes Corretivas": Path(
+            acoes_corretivas.PROFILE_DIR
+        ).resolve(),
+    }
+
+    if len(
+        set(
+            perfis.values()
+        )
+    ) != 1:
+
         raise RuntimeError(
-            "Inspecoes e Planos de Acao utilizam "
+            "As fontes PREVSYS utilizam "
             "PROFILE_DIR diferentes. "
-            "Sessao compartilhada bloqueada."
+            "Sessao compartilhada bloqueada. "
+            f"Perfis: {perfis}"
         )
 
-    url_inspecoes = (
-        str(
-            inspecoes.URL_PREVSIS
-        )
-        .strip()
-        .rstrip("/")
-    )
+    urls = {
+        "Inspecoes": (
+            str(
+                inspecoes.URL_PREVSIS
+            )
+            .strip()
+            .rstrip("/")
+        ),
 
-    url_planos = (
-        str(
-            planos.URL_PREVSIS
-        )
-        .strip()
-        .rstrip("/")
-    )
+        "Planos de Acao": (
+            str(
+                planos.URL_PREVSIS
+            )
+            .strip()
+            .rstrip("/")
+        ),
 
-    if url_inspecoes != url_planos:
+        "Acoes Corretivas": (
+            str(
+                acoes_corretivas.URL_PREVSIS
+            )
+            .strip()
+            .rstrip("/")
+        ),
+    }
+
+    if len(
+        set(
+            urls.values()
+        )
+    ) != 1:
+
         raise RuntimeError(
-            "Inspecoes e Planos de Acao utilizam "
-            "URLs Prevsys diferentes. "
-            "Sessao compartilhada bloqueada."
+            "As fontes PREVSYS utilizam "
+            "URLs diferentes. "
+            "Sessao compartilhada bloqueada. "
+            f"URLs: {urls}"
         )
 
     print(
@@ -65,14 +94,16 @@ def validar_configuracao_compartilhada():
     )
 
 
-def abrir_segunda_aba_reporte(
+def abrir_nova_aba_reporte(
     context,
     url_reporte_360,
+    nome_fonte,
 ):
 
     print()
+
     print(
-        "Abrindo Planos de Acao em nova aba "
+        f"Abrindo {nome_fonte} em nova aba "
         "da mesma sessao autenticada..."
     )
 
@@ -91,13 +122,15 @@ def abrir_segunda_aba_reporte(
     if "/KPI/VistaKPI" not in page.url:
 
         raise RuntimeError(
-            "A segunda aba nao reutilizou corretamente "
+            f"A nova aba de {nome_fonte} "
+            "nao reutilizou corretamente "
             "a sessao autenticada do Prevsys. "
             f"URL atual: {page.url}"
         )
 
     print(
-        "Sessao autenticada reutilizada sem novo login."
+        "Sessao autenticada reutilizada "
+        "sem novo login."
     )
 
     print(
@@ -114,7 +147,7 @@ def extrair_prevsys():
     )
 
     print(
-        "EXTRACAO PREVSYS - INSPECOES + PLANOS DE ACAO"
+        "EXTRACAO PREVSYS - INSPECOES + PLANOS DE ACAO + ACOES CORRETIVAS"
     )
 
     print(
@@ -135,8 +168,14 @@ def extrair_prevsys():
         exist_ok=True,
     )
 
+    acoes_corretivas.PASTA_BRONZE.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
     inspecoes.limpar_temporario()
     planos.limpar_temporario()
+    acoes_corretivas.limpar_temporario()
 
     try:
 
@@ -193,7 +232,7 @@ def extrair_prevsys():
                 )
 
                 # =================================================
-                # 1/2 - INSPECOES
+                # 1/3 - INSPECOES
                 # =================================================
 
                 print()
@@ -202,7 +241,7 @@ def extrair_prevsys():
                 )
 
                 print(
-                    "PREVSYS 1/2 - INSPECOES"
+                    "PREVSYS 1/3 - INSPECOES"
                 )
 
                 print(
@@ -219,7 +258,7 @@ def extrair_prevsys():
 
                 print(
                     "URL do Reporte 360 preservada "
-                    "para a segunda extracao."
+                    "para as proximas extracoes."
                 )
 
                 inspecoes.abrir_lista_verificacao(
@@ -246,7 +285,7 @@ def extrair_prevsys():
                 )
 
                 # =================================================
-                # 2/2 - PLANOS
+                # 2/3 - PLANOS
                 #
                 # Nova aba, MESMO contexto.
                 # Nao executa garantir_login novamente.
@@ -254,9 +293,10 @@ def extrair_prevsys():
                 # =================================================
 
                 page_planos = (
-                    abrir_segunda_aba_reporte(
+                    abrir_nova_aba_reporte(
                         context,
                         url_reporte_360,
+                        "Planos de Acao",
                     )
                 )
 
@@ -266,7 +306,7 @@ def extrair_prevsys():
                 )
 
                 print(
-                    "PREVSYS 2/2 - PLANOS DE ACAO"
+                    "PREVSYS 2/3 - PLANOS DE ACAO"
                 )
 
                 print(
@@ -297,7 +337,65 @@ def extrair_prevsys():
                 )
 
                 # =================================================
-                # PROMOCAO SO DEPOIS DAS DUAS VALIDACOES
+                # 3/3 - ACOES CORRETIVAS
+                #
+                # Nova aba, MESMO contexto.
+                # Nao executa login novamente.
+                # Nao abre novo Edge.
+                # =================================================
+
+                page_acoes = (
+                    abrir_nova_aba_reporte(
+                        context,
+                        url_reporte_360,
+                        "Acoes Corretivas",
+                    )
+                )
+
+                print()
+                print(
+                    "=" * 70
+                )
+
+                print(
+                    "PREVSYS 3/3 - ACOES CORRETIVAS"
+                )
+
+                print(
+                    "=" * 70
+                )
+
+                planos.abrir_plano_acao(
+                    page_acoes
+                )
+
+                acoes_corretivas.abrir_acoes_corretivas(
+                    page_acoes
+                )
+
+                arquivo_acoes = (
+                    acoes_corretivas.exportar_excel(
+                        page_acoes
+                    )
+                )
+
+                acoes_corretivas.validar_excel_acoes_corretivas(
+                    arquivo_acoes
+                )
+
+                print()
+
+                print(
+                    "Acoes Corretivas baixadas "
+                    "e validadas."
+                )
+
+                print(
+                    "Bronze oficial ainda nao promovida."
+                )
+
+                # =================================================
+                # PROMOCAO SO DEPOIS DAS TRES VALIDACOES
                 # =================================================
 
                 print()
@@ -306,7 +404,7 @@ def extrair_prevsys():
                 )
 
                 print(
-                    "PROMOVENDO AS DUAS FONTES "
+                    "PROMOVENDO AS TRES FONTES "
                     "PREVSYS PARA O BRONZE"
                 )
 
@@ -322,12 +420,16 @@ def extrair_prevsys():
                     arquivo_planos
                 )
 
+                acoes_corretivas.atualizar_bronze(
+                    arquivo_acoes
+                )
+
             finally:
 
                 print()
                 print(
                     "Fechando Prevsys / Edge "
-                    "somente apos as duas extracoes..."
+                    "somente apos as tres extracoes..."
                 )
 
                 try:
@@ -363,6 +465,10 @@ def extrair_prevsys():
 
         print(
             "Planos de Acao: BAIXADOS E VALIDADOS"
+        )
+
+        print(
+            "Acoes Corretivas: BAIXADAS E VALIDADAS"
         )
 
         print(

@@ -10,6 +10,8 @@ import {
 
 import type { ApexOptions } from "apexcharts";
 
+import AcoesCorretivasPainel from "./AcoesCorretivasPainel";
+
 const Chart = dynamic(
   () => import("react-apexcharts"),
   {
@@ -18,7 +20,8 @@ const Chart = dynamic(
 );
 
 type PlanoAcao = {
-  modulo_origem: string | null;
+    plano_id: string;
+modulo_origem: string | null;
   cronograma_plano: string | null;
   nivel_organizacional: string | null;
   flag_ativo_fonte: number;
@@ -103,6 +106,10 @@ function nomeMes(
 ) {
   return NOMES_MESES[valor] ?? valor;
 }
+
+type TipoAcao =
+  | "PLANO_ACAO"
+  | "ACAO_CORRETIVA";
 
 type Aba =
   | "TODOS"
@@ -275,6 +282,13 @@ export default function PlanosAcaoPage() {
     aba,
     setAba,
   ] = useState<Aba>("TODOS");
+
+  const [
+    tipoAcao,
+    setTipoAcao,
+  ] = useState<TipoAcao>(
+    "PLANO_ACAO",
+  );
 
 
 
@@ -934,6 +948,20 @@ export default function PlanosAcaoPage() {
     },
   };
 
+  function selecionarTipoAcao(
+    novoTipo: TipoAcao,
+  ) {
+    setTipoAcao(
+      novoTipo,
+    );
+
+    setAba(
+      "TODOS",
+    );
+
+    limparFiltros();
+  }
+
   function selecionarAba(
     novaAba: Aba,
   ) {
@@ -956,12 +984,40 @@ export default function PlanosAcaoPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">
-          Planos de Ação
+          Ações
         </h1>
 
         <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-          Acompanhamento gerencial dos Planos de Ação do SSO.
+          Acompanhamento gerencial de Planos de Ação e Ações Corretivas do SSO.
         </p>
+      </div>
+
+      <div className="flex gap-6 overflow-x-auto border-b border-gray-200 dark:border-gray-800">
+        <AbaButton
+          label="Plano de Ação"
+          ativo={
+            tipoAcao ===
+            "PLANO_ACAO"
+          }
+          onClick={() =>
+            selecionarTipoAcao(
+              "PLANO_ACAO",
+            )
+          }
+        />
+
+        <AbaButton
+          label="Ação Corretiva"
+          ativo={
+            tipoAcao ===
+            "ACAO_CORRETIVA"
+          }
+          onClick={() =>
+            selecionarTipoAcao(
+              "ACAO_CORRETIVA",
+            )
+          }
+        />
       </div>
 
       <div className="flex gap-6 overflow-x-auto border-b border-gray-200 dark:border-gray-800">
@@ -1005,19 +1061,32 @@ export default function PlanosAcaoPage() {
         />
       </div>
 
-      {carregando && (
+      {tipoAcao ===
+        "ACAO_CORRETIVA" && (
+        <AcoesCorretivasPainel
+          aba={aba}
+        />
+      )}
+
+      {tipoAcao ===
+        "PLANO_ACAO" &&
+        carregando && (
         <div className="rounded-2xl border border-gray-200 bg-white p-6 text-sm text-gray-500 shadow-sm dark:border-gray-800 dark:bg-white/[0.03]">
           Carregando Planos de Ação...
         </div>
       )}
 
-      {erro && (
+      {tipoAcao ===
+        "PLANO_ACAO" &&
+        erro && (
         <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-sm text-red-700">
           {erro}
         </div>
       )}
 
-      {!carregando &&
+      {tipoAcao ===
+        "PLANO_ACAO" &&
+        !carregando &&
         !erro && (
           <>
             <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-white/[0.03]">
@@ -1323,6 +1392,11 @@ export default function PlanosAcaoPage() {
                   <thead className="bg-gray-50 dark:bg-gray-800/50">
                     <tr>
 
+                      <th className="whitespace-nowrap px-4 py-3 text-left font-medium">
+                        ID do Plano
+                      </th>
+
+
 
 
 
@@ -1366,16 +1440,20 @@ export default function PlanosAcaoPage() {
 
                   <tbody>
                     {dadosFiltrados.map(
-                      (plano, index) => (
+                      (plano) => (
                         <tr
-                          key={index}
+                          key={plano.plano_id}
                           className="border-t border-gray-100 dark:border-gray-800"
                         >
 
 
 
 
-                          <td className="min-w-48 px-4 py-3">
+                                                    <td className="whitespace-nowrap px-4 py-3 font-medium">
+                            {plano.plano_id}
+                          </td>
+
+<td className="min-w-48 px-4 py-3">
                             {
                               plano.gestor_exibicao ??
                               "—"
@@ -1436,7 +1514,7 @@ export default function PlanosAcaoPage() {
                       <tr>
                         <td
                           colSpan={
-                            11
+                            9
                           }
                           className="px-5 py-10 text-center text-sm text-gray-500"
                         >
