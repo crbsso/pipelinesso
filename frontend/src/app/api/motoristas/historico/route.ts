@@ -202,7 +202,7 @@ export async function GET(request: NextRequest) {
   // permissoes do Portal SSO nao estiver concluida.
   if (
     process.env.NODE_ENV !== "development" &&
-    process.env.SSO_MOTORISTAS_APIS_ENABLED !== "true"
+    process.env.SSO_MOTORISTAS_HISTORICO_ENABLED !== "true"
   ) {
     return NextResponse.json(
       { error: "Rota historica em validacao." },

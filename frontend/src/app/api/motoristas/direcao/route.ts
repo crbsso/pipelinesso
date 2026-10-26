@@ -44,7 +44,7 @@ function meiaNoitePaulistaEmUtc(valor: string): string {
 export async function GET(request: NextRequest) {
   if (
     process.env.NODE_ENV !== "development" &&
-    process.env.SSO_MOTORISTAS_APIS_ENABLED !== "true"
+    process.env.SSO_MOTORISTAS_DIRECAO_ENABLED !== "true"
   ) {
     return NextResponse.json(
       { error: "Rota em validacao." },
