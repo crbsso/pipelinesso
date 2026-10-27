@@ -38,6 +38,25 @@ type Props = {
 
 const LIMITE = 20;
 
+const ROTULOS_IDENTIFICACAO = new Map<string, string>([
+  ["IDENTIFICADO_COM_SETOR", "Motorista identificado"],
+  ["SEM_MOTORISTA_IDENTIFICADO", "Motorista n\u00e3o identificado"],
+  ["MOTORISTA_FORA_CADASTRO_ATUAL", "Motorista n\u00e3o localizado no cadastro atual"],
+  ["MOTORISTA_SEM_IDENTIDADE_RM", "Sem identifica\u00e7\u00e3o no RM"],
+  ["MOTORISTA_DESLIGADO_IDENTIFICADO", "Desativa\u00e7\u00e3o pendente na Cobli"],
+  ["MOTORISTA_REVISAR_RM", "Situa\u00e7\u00e3o no RM requer revis\u00e3o"],
+  ["MOTORISTA_RM_SEM_SETOR", "Setor n\u00e3o informado"],
+]);
+
+function rotuloIdentificacao(codigo?: string | null): string {
+  if (!codigo?.trim()) return "\u2014";
+
+  return (
+    ROTULOS_IDENTIFICACAO.get(codigo.trim()) ??
+    "Situa\u00e7\u00e3o em an\u00e1lise"
+  );
+}
+
 const meses = [
   "Janeiro", "Fevereiro", "Março", "Abril",
   "Maio", "Junho", "Julho", "Agosto",
@@ -345,7 +364,7 @@ export default function HistoricoMotoristas({
                       {evento.nome_exibicao || "Não identificado"}
                     </div>
                     <div className="break-words text-xs text-gray-500">
-                      {evento.status_identificacao_condutor || "—"}
+                      {rotuloIdentificacao(evento.status_identificacao_condutor)}
                     </div>
                   </td>
                   <td className="px-2 py-3">
