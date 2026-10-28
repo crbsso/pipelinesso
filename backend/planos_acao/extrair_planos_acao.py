@@ -1418,6 +1418,75 @@ def abrir_menu_planos_acao(
             )
 
 
+    # Segunda tentativa restrita ao mesmo visual.
+    if botao_alvo is None:
+        print("Tentando pontos alternativos de hover...")
+
+        pontos = [
+            ("canto-direito", 0.96, 0.06),
+            ("cabecalho-direito", 0.83, 0.06),
+            ("cabecalho-centro", 0.50, 0.06),
+            ("centro", 0.50, 0.50),
+            ("titulo", None, None),
+        ]
+
+        for nome_ponto, px, py in pontos:
+            try:
+                if nome_ponto == "titulo":
+                    titulo.scroll_into_view_if_needed(timeout=5000)
+                    titulo.hover(timeout=5000)
+                else:
+                    caixa = hover_alvo.bounding_box()
+                    if not caixa:
+                        continue
+                    hover_alvo.hover(
+                        position={
+                            "x": max(1, min(
+                                caixa["width"] - 2,
+                                caixa["width"] * px
+                            )),
+                            "y": max(1, min(
+                                caixa["height"] - 2,
+                                caixa["height"] * py
+                            )),
+                        },
+                        timeout=5000,
+                    )
+            except Exception as erro:
+                print("Hover indisponivel:", nome_ponto, str(erro)[:100])
+                continue
+
+            for _ in range(4):
+                time.sleep(0.4)
+                botoes = contexto_titulo.locator(
+                    'button[data-automation-id="analysis_visual_dropdown_menu_button"]'
+                )
+                for i in range(botoes.count()):
+                    botao = botoes.nth(i)
+                    try:
+                        aria = botao.get_attribute("aria-label") or ""
+                        if (
+                            botao.is_visible()
+                            and "menu options" in aria.lower()
+                            and "table" in aria.lower()
+                            and padrao_titulo.search(aria)
+                        ):
+                            botao_alvo = botao
+                            print(
+                                "Botao encontrado apos hover:",
+                                nome_ponto
+                            )
+                            print("aria-label:", aria)
+                            break
+                    except Exception:
+                        continue
+
+                if botao_alvo is not None:
+                    break
+
+            if botao_alvo is not None:
+                break
+
     if (
         botao_alvo
         is None
