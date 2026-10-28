@@ -19,7 +19,7 @@ PASTA_PROJETO = Path(__file__).resolve().parents[2]
 
 URL_PREVSIS = os.getenv(
     "PREVSIS_URL",
-    "https://celeoqa.prevsis.com/",
+    "https://celeo.prevsis.com/Login/LoginForm",
 )
 
 PROFILE_DIR = (
@@ -167,70 +167,81 @@ def aguardar_texto(
 # =========================================================
 
 def garantir_login(page):
-    """
-    Abre o Prevsys.
+    """Confirma sessao no menu interno; nunca confunde LoginForm com login completo.
 
-    Se aparecer Azure AD Login, clica nele.
-
-    Na primeira execucao o usuario pode precisar
-    concluir manualmente o login corporativo/MFA.
-    O perfil persistente conservara a sessao.
+    A autenticacao Azure pode redirecionar a aba original ou abrir outra.
+    Devolve a aba autenticada para o restante da extracao.
     """
+    from urllib.parse import urlsplit
 
     print("Abrindo Prevsys...")
-
     page.goto(
         URL_PREVSIS,
         wait_until="domcontentloaded",
         timeout=60000,
     )
 
-    time.sleep(2)
-
+    page.wait_for_timeout(1500)
     _, botao_login = localizar_texto(
-        page,
-        "Azure AD Login",
-        exact=True,
+        page, "Azure AD Login", exact=True,
     )
-
     if botao_login is not None:
-
         try:
             if botao_login.is_visible():
+                print("Tela de login: acionando Azure AD Login...")
+                botao_login.click(timeout=20000)
+        except Exception as erro:
+            # O clique pode iniciar a navegacao antes de retornar.
+            # A confirmacao abaixo e a unica fonte de verdade.
+            print("Aviso no acionamento do Azure AD:", type(erro).__name__)
 
-                print(
-                    "Tela de login encontrada. "
-                    "Clicando em Azure AD Login..."
-                )
+    print("Aguardando pagina autenticada e menu 'Reporte 360'...")
+    print("Se houver solicitacao Microsoft/MFA, conclua-a no Edge.")
 
-                botao_login.click()
+    contexto = page.context
+    prazo = time.monotonic() + 180
 
+    while time.monotonic() < prazo:
+        # Considera a aba inicial e as abas abertas pelo login federado.
+        abas = [page]
+        try:
+            abas.extend(p for p in contexto.pages if p is not page)
         except Exception:
             pass
 
-    print(
-        "Aguardando a sessão autenticada do Prevsys..."
-    )
+        for aba in abas:
+            try:
+                if aba.is_closed():
+                    continue
+                atual = urlsplit(aba.url)
+                caminho = atual.path.lower().rstrip("/")
+                if atual.scheme != "https" or atual.hostname != "celeo.prevsis.com":
+                    continue
+                if caminho in ("", "/login") or caminho.startswith("/login/"):
+                    continue
+                _, menu = localizar_texto(aba, "Reporte 360", exact=False)
+                if menu is None or not menu.is_visible():
+                    continue
+                print("Sessao autenticada confirmada:", atual.hostname + atual.path)
+                return aba
+            except Exception:
+                continue
 
-    try:
-        page.wait_for_url(
-            re.compile(
-                r"https://celeo\.prevsis\.com/.*"
-            ),
-            timeout=120000,
-        )
+        # O wait do Playwright permite que redirecionamentos e popups avancem.
+        try:
+            aba_espera = next((a for a in abas if not a.is_closed()), None)
+            if aba_espera is None:
+                raise RuntimeError("Todas as abas foram fechadas durante o login")
+            aba_espera.wait_for_timeout(750)
+        except Exception:
+            time.sleep(0.75)
 
-    except PlaywrightTimeoutError:
-
-        raise RuntimeError(
-            "Não foi possível confirmar a sessão "
-            "autenticada no Prevsys. "
-            "Se aparecer Microsoft/Azure AD no Edge, "
-            "conclua o login e execute novamente."
-        )
-
-    print(
-        f"Sessão autenticada: {page.url}"
+    raise RuntimeError(
+        "Login Prevsys nao foi confirmado: pagina interna com o menu "
+        "'Reporte 360' nao apareceu em ate 180s. "
+        "A tela /Login/LoginForm NAO prova autenticacao. "
+        "Verifique no Edge se o Microsoft/Azure AD ou MFA ficou pendente. "
+        "Nenhuma extracao oficial deve prosseguir neste estado."
     )
 
 
@@ -289,270 +300,126 @@ def abrir_reporte_360(page):
 # =========================================================
 
 def abrir_plano_acao(page):
-
-    print(
-        "Procurando opcao 'Analise Plano de Acao'..."
-    )
-
-    texto_alvo = "An?lise Plano de A??o"
-
-    candidato_encontrado = None
-
-    # =====================================================
-    # 1. PROCURA NO DOCUMENTO PRINCIPAL E NOS FRAMES
-    # =====================================================
-
-    contextos = [
-        page,
-        *[
-            frame
-            for frame in page.frames
-            if frame != page.main_frame
-        ],
-    ]
-
-    limite = time.time() + 60
-
-    while (
-        time.time() < limite
-        and candidato_encontrado is None
-    ):
-
-        for contexto in contextos:
-
-            # ---------------------------------------------
-            # A. Busca pelo texto exato
-            # ---------------------------------------------
-
-            try:
-
-                candidatos = (
-                    contexto.get_by_text(
-                        texto_alvo,
-                        exact=True,
-                    )
-                )
-
-                for indice in range(
-                    candidatos.count()
-                ):
-
-                    candidato = (
-                        candidatos.nth(
-                            indice
-                        )
-                    )
-
-                    try:
-
-                        if (
-                            candidato.is_visible()
-                        ):
-
-                            candidato_encontrado = (
-                                candidato
-                            )
-
-                            print(
-                                "Opcao visivel encontrada "
-                                "pelo texto exato."
-                            )
-
-                            break
-
-                    except Exception:
-                        continue
-
-            except Exception:
-                pass
-
-            if (
-                candidato_encontrado
-                is not None
-            ):
-                break
-
-            # ---------------------------------------------
-            # B. Fallback sem depender de acentos
-            # ---------------------------------------------
-
-            try:
-
-                candidatos = (
-                    contexto.get_by_text(
-                        re.compile(
-                            r"An.lise\s+Plano\s+de\s+A..o",
-                            re.IGNORECASE,
-                        )
-                    )
-                )
-
-                for indice in range(
-                    candidatos.count()
-                ):
-
-                    candidato = (
-                        candidatos.nth(
-                            indice
-                        )
-                    )
-
-                    try:
-
-                        if (
-                            candidato.is_visible()
-                        ):
-
-                            candidato_encontrado = (
-                                candidato
-                            )
-
-                            print(
-                                "Opcao visivel encontrada "
-                                "pelo fallback."
-                            )
-
-                            break
-
-                    except Exception:
-                        continue
-
-            except Exception:
-                pass
-
-            if (
-                candidato_encontrado
-                is not None
-            ):
-                break
-
-        if (
-            candidato_encontrado
-            is None
-        ):
-            time.sleep(1)
-
-
-    if (
-        candidato_encontrado
-        is None
-    ):
-        raise RuntimeError(
-            "A opcao 'Analise Plano de Acao' "
-            "esta no Reporte 360, mas nao foi "
-            "localizada automaticamente."
-        )
-
-
-    # =====================================================
-    # 2. GARANTE QUE ESTA VISIVEL
-    # =====================================================
-
-    try:
-
-        candidato_encontrado.scroll_into_view_if_needed(
-            timeout=10000
-        )
-
-    except Exception:
-        pass
-
-
-    # =====================================================
-    # 3. CLICA
-    # =====================================================
-
-    print(
-        "Clicando em Analise Plano de Acao..."
-    )
-
-    clicou = False
-
-    try:
-
-        candidato_encontrado.click(
-            timeout=15000,
-        )
-
-        clicou = True
-
-    except Exception as erro:
-
-        print(
-            "Clique Playwright nao funcionou. "
-            "Tentando clique DOM..."
-        )
-
-        try:
-
-            candidato_encontrado.evaluate(
-                "(el) => el.click()"
-            )
-
-            clicou = True
-
-        except Exception:
-
-            raise RuntimeError(
-                "A opcao foi encontrada, "
-                "mas nao foi possivel clicar."
-            ) from erro
-
-
-    if not clicou:
-
-        raise RuntimeError(
-            "Falha ao acionar "
-            "Analise Plano de Acao."
-        )
-
-
-    print(
-        "Analise Plano de Acao acionada."
-    )
-
-    # O QuickSight precisa de alguns segundos
-    # para trocar a analise e iniciar os visuais.
-    time.sleep(6)
-
-    print(
-        "Aguardando dashboard "
-        "de Plano de Acao..."
-    )
-
-    # Nao procuramos ainda o visual final,
-    # porque ele fica abaixo da dobra e depende
-    # de lazy rendering. A proxima funcao
-    # fara a rolagem ate:
-    # 'Planos de a??o detalhados'.
-
-    print(
-        "Dashboard pronto para procurar "
-        "'Planos de a??o detalhados'."
-    )
-
-
-# =========================================================
-# FILTRO DIVISAO = CELEO BRASIL
-# =========================================================
-
-
-# =========================================================
-# LOCALIZA MENU DO DETALLE CHECKLIST
-# =========================================================
-
-def abrir_menu_planos_acao(page):
-
-    print(
-        "Procurando visual "
-        "'Planos de acao detalhados'..."
-    )
-
-
-    padrao_titulo = re.compile(
-        r"Planos\s+de\s+a..o\s+detalhados",
+    """Seleciona e confirma a aba SUPERIOR do Reporte 360.
+
+    Evita o menu lateral 'Plano de Acao' e nao aceita o clique como
+    confirmacao de que o painel do QuickSight foi trocado.
+    """
+    print("Procurando ABA SUPERIOR 'Analise Plano de Acao'...")
+    padrao = re.compile(
+        r"^\s*An[aá]lise\s+Plano\s+de\s+A[cç][aã]o\s*$",
         re.IGNORECASE,
     )
+    prazo = time.monotonic() + 60
+    clicou = False
+    while time.monotonic() < prazo and not clicou:
+        candidatos = page.main_frame.get_by_text(padrao)
+        for indice in range(candidatos.count()):
+            candidato = candidatos.nth(indice)
+            try:
+                if not candidato.is_visible():
+                    continue
+                candidato.scroll_into_view_if_needed(timeout=10000)
+                candidato.click(timeout=15000)
+                clicou = True
+                break
+            except Exception:
+                continue
+        if not clicou:
+            page.wait_for_timeout(750)
+
+    if not clicou:
+        raise RuntimeError(
+            "A ABA SUPERIOR 'Analise Plano de Acao' nao foi localizada "
+            "no Reporte 360. Nenhum download iniciado."
+        )
+
+    print("Aba superior de Plano de Acao acionada; confirmando painel...")
+    prazo = time.monotonic() + 45
+    while time.monotonic() < prazo:
+        encontrados = page.main_frame.get_by_text(padrao)
+        posicoes = []
+        for indice in range(encontrados.count()):
+            try:
+                elemento = encontrados.nth(indice)
+                if elemento.is_visible():
+                    caixa = elemento.bounding_box()
+                    if caixa:
+                        posicoes.append(caixa["y"])
+            except Exception:
+                continue
+        if len(posicoes) >= 2 and max(posicoes)-min(posicoes) >= 35:
+            print("Painel 'Analise Plano de Acao': CONFIRMADO.")
+            return
+        page.wait_for_timeout(750)
+
+    raise RuntimeError(
+        "A aba de Plano de Acao foi clicada, mas seu cabecalho "
+        "nao apareceu. Nao exportar: pode ser a analise errada."
+    )
+
+
+def selecionar_aba_interna_planos(page):
+    """Seleciona explicitamente a aba INTERNA 'Planos de acao'.
+
+    A localizacao exata do visual detalhado e sua exportacao continuam
+    por conta de abrir_menu_planos_acao, que faz rolagem progressiva.
+    """
+    print("Selecionando aba interna 'Planos de acao'...")
+    padrao = re.compile(r"^\s*Planos\s+de\s+a[cç][aã]o\s*$", re.IGNORECASE)
+    prazo = time.monotonic() + 60
+    while time.monotonic() < prazo:
+        # Preferencia por tabs semanticas dentro do dashboard do QuickSight;
+        # fallback para texto exato (versoes antigas nao usam role=tab).
+        # O Prevsys pode incorporar o QuickSight em iframe ou no proprio
+        # documento principal. Preserva-se a compatibilidade com ambos.
+        contextos = [f for f in page.frames if f is not page.main_frame]
+        contextos.append(page.main_frame)
+        for contexto in contextos:
+            try:
+                grupos = (
+                    contexto.get_by_role("tab", name=padrao),
+                    contexto.get_by_text(padrao),
+                )
+                for candidatos in grupos:
+                    for indice in range(candidatos.count()):
+                        candidato = candidatos.nth(indice)
+                        try:
+                            if not candidato.is_visible():
+                                continue
+                            candidato.scroll_into_view_if_needed(timeout=10000)
+                            candidato.click(timeout=15000)
+                            print("Aba interna 'Planos de acao' acionada.")
+                            return
+                        except Exception:
+                            continue
+            except Exception:
+                continue
+        page.wait_for_timeout(750)
+    raise RuntimeError(
+        "A aba interna 'Planos de acao' nao foi encontrada dentro "
+        "da analise. A exportacao foi bloqueada."
+    )
+
+
+def abrir_menu_planos_acao(
+    page,
+    padrao_titulo=None,
+    nome_visual="Planos de acao detalhados",
+):
+
+    print(
+        f"Procurando visual '{nome_visual}'..."
+    )
+
+    if padrao_titulo is None:
+        padrao_titulo = re.compile(
+            r"Planos\s+de\s+a..o\s+detalhados",
+            re.IGNORECASE,
+        )
+
+    if not hasattr(padrao_titulo, "search"):
+        raise TypeError("padrao_titulo deve ser uma expressao regular compilada.")
 
 
     # =====================================================
@@ -1318,7 +1185,7 @@ def abrir_menu_planos_acao(page):
                 and
                 info["altura"] > 180
                 and
-                "Planos de" in info["texto"]
+                padrao_titulo.search(info["texto"])
             ):
 
                 print(
@@ -1500,11 +1367,7 @@ def abrir_menu_planos_acao(page):
                         "menu options"
                         in aria_lower
                         and
-                        "planos de a"
-                        in aria_lower
-                        and
-                        "detalhados"
-                        in aria_lower
+                        padrao_titulo.search(aria)
                         and
                         "table"
                         in aria_lower
@@ -1721,13 +1584,30 @@ def abrir_menu_planos_acao(page):
 # EXPORTA EXCEL
 # =========================================================
 
-def exportar_excel(page):
+def exportar_excel(
+    page,
+    abrir_menu_func=None,
+    pasta_bronze=None,
+    arquivo_temporario=None,
+):
 
     import base64
 
-    frame = abrir_menu_planos_acao(
-        page
+    if abrir_menu_func is None:
+        abrir_menu_func = abrir_menu_planos_acao
+    if not callable(abrir_menu_func):
+        raise TypeError("abrir_menu_func deve ser uma funcao.")
+
+    destino_bronze = Path(pasta_bronze) if pasta_bronze is not None else PASTA_BRONZE
+    destino_temporario = (
+        Path(arquivo_temporario)
+        if arquivo_temporario is not None
+        else ARQUIVO_TEMPORARIO
     )
+    if destino_temporario.parent.resolve() != destino_bronze.resolve():
+        raise RuntimeError("Arquivo temporario fora da pasta Bronze selecionada.")
+
+    frame = abrir_menu_func(page)
 
     print(
         "Selecionando Export to Excel..."
@@ -1747,13 +1627,13 @@ def exportar_excel(page):
             exact=True,
         )
 
-    PASTA_BRONZE.mkdir(
+    destino_bronze.mkdir(
         parents=True,
         exist_ok=True,
     )
 
-    if ARQUIVO_TEMPORARIO.exists():
-        ARQUIVO_TEMPORARIO.unlink()
+    if destino_temporario.exists():
+        destino_temporario.unlink()
 
     estado_blob = {
         "capturado": False,
@@ -1787,7 +1667,7 @@ def exportar_excel(page):
                     "Blob recebido sem dados."
                 )
 
-            ARQUIVO_TEMPORARIO.write_bytes(
+            destino_temporario.write_bytes(
                 dados
             )
 
@@ -2184,7 +2064,7 @@ def exportar_excel(page):
 
             download.save_as(
                 str(
-                    ARQUIVO_TEMPORARIO
+                    destino_temporario
                 )
             )
 
@@ -2217,9 +2097,9 @@ def exportar_excel(page):
     while time.time() < limite:
 
         if (
-            ARQUIVO_TEMPORARIO.exists()
+            destino_temporario.exists()
             and
-            ARQUIVO_TEMPORARIO.stat().st_size > 0
+            destino_temporario.stat().st_size > 0
         ):
 
             break
@@ -2244,7 +2124,7 @@ def exportar_excel(page):
 
             break
 
-    if not ARQUIVO_TEMPORARIO.exists():
+    if not destino_temporario.exists():
 
         detalhes = []
 
@@ -2277,7 +2157,7 @@ def exportar_excel(page):
         )
 
     tamanho = (
-        ARQUIVO_TEMPORARIO
+        destino_temporario
         .stat()
         .st_size
     )
@@ -2299,10 +2179,10 @@ def exportar_excel(page):
     )
 
     print(
-        ARQUIVO_TEMPORARIO
+        destino_temporario
     )
 
-    return ARQUIVO_TEMPORARIO
+    return destino_temporario
 
 
 # =========================================================
@@ -2789,7 +2669,7 @@ def extrair_planos_acao():
                     else context.new_page()
                 )
 
-                garantir_login(
+                page = garantir_login(
                     page
                 )
 
@@ -2800,6 +2680,8 @@ def extrair_planos_acao():
                 abrir_plano_acao(
                     page
                 )
+
+                selecionar_aba_interna_planos(page)
 
                 arquivo = exportar_excel(
                     page

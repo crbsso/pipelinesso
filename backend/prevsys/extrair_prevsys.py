@@ -1,6 +1,8 @@
 ﻿from pathlib import Path
 import sys
 import time
+import re
+import unicodedata
 
 from playwright.sync_api import (
     sync_playwright,
@@ -140,6 +142,65 @@ def abrir_nova_aba_reporte(
     return page
 
 
+def selecionar_aba_superior(page, titulo):
+    """Confirma o botao superior e o painel realmente ativos."""
+    def normalizar(valor):
+        texto = unicodedata.normalize("NFKD", str(valor or ""))
+        texto = "".join(
+            c for c in texto if not unicodedata.combining(c)
+        )
+        return " ".join(texto.lower().split())
+
+    esperado = normalizar(titulo)
+
+    abas = page.locator(
+        "ul.menu-box-level2[role='tablist'] > li > a[role='tab']"
+    )
+
+    prazo = time.monotonic() + 60
+    while time.monotonic() < prazo:
+        candidatos = [
+            abas.nth(n) for n in range(abas.count())
+            if abas.nth(n).is_visible()
+            and normalizar(abas.nth(n).inner_text()) == esperado
+        ]
+
+        if len(candidatos) == 1:
+            candidatos[0].click(timeout=15000)
+            break
+
+        if len(candidatos) > 1:
+            raise RuntimeError("Aba ambigua: " + titulo)
+
+        page.wait_for_timeout(500)
+    else:
+        raise RuntimeError("Aba nao encontrada: " + titulo)
+
+    prazo = time.monotonic() + 45
+    while time.monotonic() < prazo:
+        ativos = page.locator(
+            "ul.menu-box-level2[role='tablist'] > li.active > a[role='tab']"
+        ).all_inner_texts()
+
+        titulos = page.locator(
+            ".tab-pane.active .titulo-view"
+        ).all_inner_texts()
+
+        if (
+            len(ativos) == 1
+            and normalizar(ativos[0]) == esperado
+            and any(normalizar(t) == esperado for t in titulos)
+        ):
+            print("ABA SUPERIOR E PAINEL CONFIRMADOS:", titulo)
+            return
+
+        page.wait_for_timeout(500)
+
+    raise RuntimeError(
+        "Aba ou painel nao confirmados: " + titulo
+    )
+
+
 def extrair_prevsys():
 
     print(
@@ -227,7 +288,7 @@ def extrair_prevsys():
                     "=" * 70
                 )
 
-                inspecoes.garantir_login(
+                page_inspecoes = inspecoes.garantir_login(
                     page_inspecoes
                 )
 
@@ -261,14 +322,21 @@ def extrair_prevsys():
                     "para as proximas extracoes."
                 )
 
-                inspecoes.abrir_lista_verificacao(
-                    page_inspecoes
+                selecionar_aba_superior(
+                    page_inspecoes, "analise da lista de verificacao"
                 )
 
-                arquivo_inspecoes = (
-                    inspecoes.exportar_excel(
-                        page_inspecoes
-                    )
+                arquivo_inspecoes = planos.exportar_excel(
+                    page_inspecoes,
+                    abrir_menu_func=lambda pagina: planos.abrir_menu_planos_acao(
+                        pagina,
+                        padrao_titulo=re.compile(
+                            r"\bDetalle\s+Checklist\b", re.IGNORECASE
+                        ),
+                        nome_visual="Detalle Checklist",
+                    ),
+                    pasta_bronze=inspecoes.PASTA_BRONZE,
+                    arquivo_temporario=inspecoes.ARQUIVO_TEMPORARIO,
                 )
 
                 inspecoes.validar_excel_inspecoes(
@@ -313,9 +381,11 @@ def extrair_prevsys():
                     "=" * 70
                 )
 
-                planos.abrir_plano_acao(
-                    page_planos
+                selecionar_aba_superior(
+                    page_planos, "analise plano de acao"
                 )
+
+                planos.selecionar_aba_interna_planos(page_planos)
 
                 arquivo_planos = (
                     planos.exportar_excel(
@@ -365,8 +435,8 @@ def extrair_prevsys():
                     "=" * 70
                 )
 
-                planos.abrir_plano_acao(
-                    page_acoes
+                selecionar_aba_superior(
+                    page_acoes, "analise plano de acao"
                 )
 
                 acoes_corretivas.abrir_acoes_corretivas(

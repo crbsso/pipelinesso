@@ -19,7 +19,7 @@ PASTA_PROJETO = Path(__file__).resolve().parents[2]
 
 URL_PREVSIS = os.getenv(
     "PREVSIS_URL",
-    "https://celeoqa.prevsis.com/",
+    "https://celeo.prevsis.com/Login/LoginForm",
 )
 
 PROFILE_DIR = (
@@ -160,70 +160,81 @@ def aguardar_texto(
 # =========================================================
 
 def garantir_login(page):
-    """
-    Abre o Prevsys.
+    """Confirma sessao no menu interno; nunca confunde LoginForm com login completo.
 
-    Se aparecer Azure AD Login, clica nele.
-
-    Na primeira execucao o usuario pode precisar
-    concluir manualmente o login corporativo/MFA.
-    O perfil persistente conservara a sessao.
+    A autenticacao Azure pode redirecionar a aba original ou abrir outra.
+    Devolve a aba autenticada para o restante da extracao.
     """
+    from urllib.parse import urlsplit
 
     print("Abrindo Prevsys...")
-
     page.goto(
         URL_PREVSIS,
         wait_until="domcontentloaded",
         timeout=60000,
     )
 
-    time.sleep(2)
-
+    page.wait_for_timeout(1500)
     _, botao_login = localizar_texto(
-        page,
-        "Azure AD Login",
-        exact=True,
+        page, "Azure AD Login", exact=True,
     )
-
     if botao_login is not None:
-
         try:
             if botao_login.is_visible():
+                print("Tela de login: acionando Azure AD Login...")
+                botao_login.click(timeout=20000)
+        except Exception as erro:
+            # O clique pode iniciar a navegacao antes de retornar.
+            # A confirmacao abaixo e a unica fonte de verdade.
+            print("Aviso no acionamento do Azure AD:", type(erro).__name__)
 
-                print(
-                    "Tela de login encontrada. "
-                    "Clicando em Azure AD Login..."
-                )
+    print("Aguardando pagina autenticada e menu 'Reporte 360'...")
+    print("Se houver solicitacao Microsoft/MFA, conclua-a no Edge.")
 
-                botao_login.click()
+    contexto = page.context
+    prazo = time.monotonic() + 180
 
+    while time.monotonic() < prazo:
+        # Considera a aba inicial e as abas abertas pelo login federado.
+        abas = [page]
+        try:
+            abas.extend(p for p in contexto.pages if p is not page)
         except Exception:
             pass
 
-    print(
-        "Aguardando a sessão autenticada do Prevsys..."
-    )
+        for aba in abas:
+            try:
+                if aba.is_closed():
+                    continue
+                atual = urlsplit(aba.url)
+                caminho = atual.path.lower().rstrip("/")
+                if atual.scheme != "https" or atual.hostname != "celeo.prevsis.com":
+                    continue
+                if caminho in ("", "/login") or caminho.startswith("/login/"):
+                    continue
+                _, menu = localizar_texto(aba, "Reporte 360", exact=False)
+                if menu is None or not menu.is_visible():
+                    continue
+                print("Sessao autenticada confirmada:", atual.hostname + atual.path)
+                return aba
+            except Exception:
+                continue
 
-    try:
-        page.wait_for_url(
-            re.compile(
-                r"https://celeo\.prevsis\.com/.*"
-            ),
-            timeout=120000,
-        )
+        # O wait do Playwright permite que redirecionamentos e popups avancem.
+        try:
+            aba_espera = next((a for a in abas if not a.is_closed()), None)
+            if aba_espera is None:
+                raise RuntimeError("Todas as abas foram fechadas durante o login")
+            aba_espera.wait_for_timeout(750)
+        except Exception:
+            time.sleep(0.75)
 
-    except PlaywrightTimeoutError:
-
-        raise RuntimeError(
-            "Não foi possível confirmar a sessão "
-            "autenticada no Prevsys. "
-            "Se aparecer Microsoft/Azure AD no Edge, "
-            "conclua o login e execute novamente."
-        )
-
-    print(
-        f"Sessão autenticada: {page.url}"
+    raise RuntimeError(
+        "Login Prevsys nao foi confirmado: pagina interna com o menu "
+        "'Reporte 360' nao apareceu em ate 180s. "
+        "A tela /Login/LoginForm NAO prova autenticacao. "
+        "Verifique no Edge se o Microsoft/Azure AD ou MFA ficou pendente. "
+        "Nenhuma extracao oficial deve prosseguir neste estado."
     )
 
 
@@ -282,62 +293,75 @@ def abrir_reporte_360(page):
 # =========================================================
 
 def abrir_lista_verificacao(page):
+    """Seleciona e confirma a aba superior real de Inspecoes."""
+    import unicodedata
 
-    print(
-        "Procurando Analise da lista de verificacao..."
+    def normalizar(texto):
+        letras = unicodedata.normalize("NFKD", texto or "")
+        sem_acentos = "".join(
+            c for c in letras if not unicodedata.combining(c)
+        )
+        return " ".join(sem_acentos.lower().split())
+
+    esperado = "analise da lista de verificacao"
+
+    botoes = page.locator(
+        "ul.menu-box-level2[role='tablist'] > li > a[role='tab']"
     )
 
-    padrao = re.compile(
-        r"lista de verifica",
-        re.IGNORECASE,
+    alvo = None
+    limite = time.monotonic() + 60
+
+    while time.monotonic() < limite:
+        for idx in range(botoes.count()):
+            botao = botoes.nth(idx)
+            if botao.is_visible() and normalizar(botao.inner_text()) == esperado:
+                alvo = botao
+                break
+
+        if alvo is not None:
+            break
+
+        page.wait_for_timeout(500)
+
+    if alvo is None:
+        raise RuntimeError("Aba superior de Inspecoes nao localizada.")
+
+    alvo.scroll_into_view_if_needed(timeout=10000)
+    alvo.click(timeout=15000)
+
+    print("Aba de Inspecoes clicada. Confirmando estado ACTIVE...")
+
+    limite = time.monotonic() + 45
+
+    while time.monotonic() < limite:
+        selecionados = page.locator(
+            "ul.menu-box-level2[role='tablist'] > li.active > a[role='tab']"
+        )
+
+        selecionado = any(
+            normalizar(texto) == esperado
+            for texto in selecionados.all_inner_texts()
+        )
+
+        cabecalhos = page.locator(".tab-pane.active .titulo-view")
+
+        painel_correto = any(
+            esperado in normalizar(texto)
+            for texto in cabecalhos.all_inner_texts()
+        )
+
+        if selecionado and painel_correto:
+            print("ABA E PAINEL DE INSPECOES: CONFIRMADOS")
+            return
+
+        page.wait_for_timeout(500)
+
+    raise RuntimeError(
+        "A aba e o painel de Inspecoes nao ficaram ativos. "
+        "Exportacao bloqueada."
     )
 
-    _, locator = aguardar_texto(
-        page,
-        padrao,
-        timeout=120000,
-        exact=False,
-    )
-
-    print(
-        "Opcao de lista de verificacao encontrada."
-    )
-
-    locator.scroll_into_view_if_needed()
-
-    locator.click(
-        timeout=15000,
-    )
-
-    print(
-        "Analise da lista de verificacao acionada."
-    )
-
-    # O filtro Divisao fica no topo da analise e
-    # funciona como marcador de que o dashboard carregou.
-    aguardar_texto(
-        page,
-        re.compile(
-            r"Divis",
-            re.IGNORECASE,
-        ),
-        timeout=120000,
-        exact=False,
-    )
-
-    print(
-        "Dashboard da lista de verificacao carregado."
-    )
-
-
-# =========================================================
-# FILTRO DIVISAO = CELEO BRASIL
-# =========================================================
-
-
-# =========================================================
-# LOCALIZA MENU DO DETALLE CHECKLIST
-# =========================================================
 
 def abrir_menu_detalle(page):
 
@@ -440,6 +464,39 @@ def abrir_menu_detalle(page):
         # Se o titulo ainda nao existe/nao esta visivel,
         # avanca todos os containers rolaveis do QuickSight.
         # -------------------------------------------------
+
+        # A pagina do portal tambem rola (barra da direita mostrada
+        # nas telas do Prevsys). Avanca apenas o painel principal,
+        # antes de percorrer os containers internos do QuickSight.
+        try:
+            page.main_frame.evaluate(
+                """() => {
+                    const largura = window.innerWidth;
+                    const candidatos = [
+                        document.scrollingElement,
+                        ...document.querySelectorAll('*')
+                    ].filter(Boolean);
+                    for (const el of candidatos) {
+                        try {
+                            const r = el.getBoundingClientRect();
+                            if (r.width < largura * 0.45 || r.right < largura * 0.7)
+                                continue;
+                            if (el.clientHeight < 200 ||
+                                el.scrollHeight <= el.clientHeight + 100)
+                                continue;
+                            const passo = Math.max(500, el.clientHeight * 0.65);
+                            el.scrollTop = Math.min(
+                                el.scrollTop + passo,
+                                el.scrollHeight - el.clientHeight
+                            );
+                        } catch (_) {}
+                    }
+                    window.scrollBy(0, Math.max(500, window.innerHeight * 0.65));
+                }"""
+            )
+        except Exception:
+            pass
+
 
         try:
 
@@ -1598,7 +1655,7 @@ def extrair_quantidade_inspecoes():
                     else context.new_page()
                 )
 
-                garantir_login(
+                page = garantir_login(
                     page
                 )
 
