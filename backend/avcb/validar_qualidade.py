@@ -502,8 +502,11 @@ def main():
         print()
         print("Abrindo relatório no Word...")
 
-        os.startfile(
-            str(relatorio)
+        # Permanece possivel abrir o relatorio manualmente.
+        # No pipeline, reprovar deve retornar codigo diferente de zero.
+        raise RuntimeError(
+            "Quality Gate AVCB reprovado. "
+            f"Relatorio: {relatorio}"
         )
 
     else:

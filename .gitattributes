@@ -1,0 +1,3 @@
+# Portal SSO - preservar bytes e diff textual
+backend/publicar_pipeline_sso.py -text diff
+backend/motoristas/executar_extracoes_cobli_sincronizadas.py -text diff

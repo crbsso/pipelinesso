@@ -1,4 +1,5 @@
 ﻿from pathlib import Path
+import os
 import json
 import sys
 
@@ -56,6 +57,31 @@ def falhar(mensagem):
 
 
 def localizar_bronze():
+
+    selecionado = os.getenv(
+        "COBLI_BRONZE_TRIPS_STOPS",
+        "",
+    ).strip()
+
+    if selecionado:
+        pasta = PASTA_BRONZE.resolve()
+        candidato = (pasta / selecionado).resolve()
+
+        if candidato.parent != pasta:
+            falhar(
+                "Bronze selecionada fora da pasta permitida."
+            )
+
+        if not (
+            candidato.name.startswith("cobli_trips_stops_")
+            and candidato.suffix == ".json"
+            and candidato.is_file()
+        ):
+            falhar(
+                "Bronze selecionada invalida ou inexistente."
+            )
+
+        return candidato
 
     arquivos = sorted(
         PASTA_BRONZE.glob(
@@ -190,6 +216,10 @@ def validar():
         "placa",
         "marca",
         "modelo",
+        "latitude_inicio",
+        "longitude_inicio",
+        "latitude_fim",
+        "longitude_fim",
         "inicio",
         "fim",
         "distancia_km",
@@ -357,6 +387,8 @@ def validar():
         .str.strip()
     )
 
+    ids_cadastro.discard("")
+
     ids_eventos = set(
         com_driver[
             "driver_id_cobli"
@@ -365,31 +397,106 @@ def validar():
         .str.strip()
     )
 
+    ids_eventos.discard("")
+
     drivers_fora_cadastro = (
         ids_eventos
         - ids_cadastro
     )
 
-    if drivers_fora_cadastro:
+    status_driver_historico = (
+        "DRIVER_NAO_ENCONTRADO_CADASTRO_COBLI"
+    )
 
-        falhar(
-            "existem drivers nos eventos "
-            "que nao constam em motoristas.csv: "
-            f"{len(drivers_fora_cadastro)}"
-        )
+    eventos_driver_fora = (
+        com_driver[
+            com_driver[
+                "driver_id_cobli"
+            ]
+            .astype(str)
+            .str.strip()
+            .isin(
+                drivers_fora_cadastro
+            )
+        ]
+    )
 
-    if (
+    if not eventos_driver_fora.empty:
+
+        if not (
+            eventos_driver_fora[
+                "situacao_vinculo_evento"
+            ]
+            == status_driver_historico
+        ).all():
+
+            falhar(
+                "driver ausente do cadastro atual "
+                "sem classificacao historica correta."
+            )
+
+        if (
+            eventos_driver_fora[
+                "driver_name_cobli"
+            ]
+            .astype(str)
+            .str.strip()
+            .eq("")
+            .any()
+        ):
+
+            falhar(
+                "driver historico fora do cadastro "
+                "atual sem nome informado pela Cobli."
+            )
+
+    classificados_historicos = eventos[
         eventos[
             "situacao_vinculo_evento"
         ]
-        == (
-            "DRIVER_NAO_ENCONTRADO_CADASTRO_COBLI"
-        )
-    ).any():
+        == status_driver_historico
+    ]
 
-        falhar(
-            "existem eventos com driver "
-            "nao encontrado no cadastro Cobli."
+    if not classificados_historicos.empty:
+
+        ids_classificados_historicos = set(
+            classificados_historicos[
+                "driver_id_cobli"
+            ]
+            .astype(str)
+            .str.strip()
+        )
+
+        ids_classificados_historicos.discard("")
+
+        inconsistentes = (
+            ids_classificados_historicos
+            & ids_cadastro
+        )
+
+        if inconsistentes:
+
+            falhar(
+                "driver classificado como fora do "
+                "cadastro Cobli, mas presente em "
+                "motoristas.csv."
+            )
+
+    if drivers_fora_cadastro:
+
+        print()
+        print(
+            "Drivers historicos fora do cadastro atual:",
+            len(
+                drivers_fora_cadastro
+            ),
+        )
+
+        print(
+            "Eventos desses drivers:",
+            len(
+                eventos_driver_fora
+            ),
         )
 
     # ---------------------------------------------------------
@@ -464,7 +571,140 @@ def validar():
         )
 
     # ---------------------------------------------------------
-    # 12. METRICAS
+    # 12. COORDENADAS
+    # ---------------------------------------------------------
+
+    limites_coordenadas = {
+        "latitude_inicio":
+            (-90, 90),
+
+        "longitude_inicio":
+            (-180, 180),
+
+        "latitude_fim":
+            (-90, 90),
+
+        "longitude_fim":
+            (-180, 180),
+    }
+
+
+    coordenadas_preenchidas = {}
+
+
+    for (
+        coluna,
+        limites,
+    ) in limites_coordenadas.items():
+
+        serie_texto = (
+            eventos[coluna]
+            .astype(str)
+            .str.strip()
+        )
+
+        preenchido = (
+            serie_texto.ne("")
+        )
+
+        coordenadas_preenchidas[
+            coluna
+        ] = preenchido
+
+        numeros = pd.to_numeric(
+            serie_texto.where(
+                preenchido
+            ),
+            errors="coerce",
+        )
+
+        if numeros[
+            preenchido
+        ].isna().any():
+
+            falhar(
+                "coordenada nao numerica "
+                f"em {coluna}."
+            )
+
+        minimo, maximo = limites
+
+        fora_limite = (
+            preenchido
+            &
+            (
+                (numeros < minimo)
+                |
+                (numeros > maximo)
+            )
+        )
+
+        if fora_limite.any():
+
+            falhar(
+                "coordenada fora do "
+                f"intervalo em {coluna}."
+            )
+
+
+    inicio_lat = (
+        coordenadas_preenchidas[
+            "latitude_inicio"
+        ]
+    )
+
+    inicio_lon = (
+        coordenadas_preenchidas[
+            "longitude_inicio"
+        ]
+    )
+
+    fim_lat = (
+        coordenadas_preenchidas[
+            "latitude_fim"
+        ]
+    )
+
+    fim_lon = (
+        coordenadas_preenchidas[
+            "longitude_fim"
+        ]
+    )
+
+
+    if (
+        inicio_lat
+        != inicio_lon
+    ).any():
+
+        falhar(
+            "localizacao inicial possui "
+            "latitude/longitude incompletas."
+        )
+
+
+    if (
+        fim_lat
+        != fim_lon
+    ).any():
+
+        falhar(
+            "localizacao final possui "
+            "latitude/longitude incompletas."
+        )
+
+
+    sem_local_inicio = eventos[
+        ~inicio_lat
+    ]
+
+    sem_local_fim = eventos[
+        ~fim_lat
+    ]
+
+
+    # ---------------------------------------------------------
+    # 13. METRICAS
     # ---------------------------------------------------------
 
     distancia = pd.to_numeric(
@@ -533,6 +773,44 @@ def validar():
         "Eventos sem identidade RM:",
         len(sem_identidade),
     )
+
+    print(
+        "Sem localizacao inicial:",
+        len(
+            sem_local_inicio
+        ),
+    )
+
+    if not sem_local_inicio.empty:
+
+        print(
+            "  Por tipo:",
+            sem_local_inicio[
+                "tipo_evento"
+            ]
+            .value_counts()
+            .to_dict(),
+        )
+
+
+    print(
+        "Sem localizacao final:",
+        len(
+            sem_local_fim
+        ),
+    )
+
+    if not sem_local_fim.empty:
+
+        print(
+            "  Por tipo:",
+            sem_local_fim[
+                "tipo_evento"
+            ]
+            .value_counts()
+            .to_dict(),
+        )
+
 
     print(
         "Distancia total km:",

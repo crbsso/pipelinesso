@@ -690,10 +690,16 @@ def gerar():
 
     mov[
         "_inicio_dt"
-    ] = pd.to_datetime(
-        mov["inicio"],
-        errors="coerce",
-        format="mixed",
+    ] = (
+        pd.to_datetime(
+            mov["inicio"],
+            errors="coerce",
+            format="mixed",
+            utc=True,
+        )
+        .dt.tz_convert(
+            "America/Sao_Paulo"
+        )
     )
 
     if mov[

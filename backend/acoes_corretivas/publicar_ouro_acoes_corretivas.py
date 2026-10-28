@@ -131,136 +131,26 @@ COLUNAS_ID_TEXTO = {
 # IDENTIDADE DO RESPONSAVEL
 # =========================================================
 
-def validar_identidade_publicacao(
-    registros,
-):
 
-    esperados = {
-        "MAPA_RM_EXATO": 466,
-        "MAPA_RM_ALIAS_COMPARTILHADO": 127,
-        "MAPA_RM_ALIAS_ACAO": 19,
-        "PREVSYS_SEM_RM": 1,
+def validar_identidade_publicacao(registros):
+    metodos = {
+        "MAPA_RM_EXATO", "MAPA_RM_ALIAS_COMPARTILHADO",
+        "MAPA_RM_ALIAS_ACAO", "PREVSYS_SEM_RM",
     }
-
-
-    contadores = {
-        chave: 0
-        for chave
-        in esperados
-    }
-
-
-    sem_exibicao = []
-    sem_metodo = []
-    metodo_invalido = []
-
-
+    if not registros:
+        raise RuntimeError("Publicacao de Acoes vazia.")
+    contadores = Counter()
     for registro in registros:
-
-        acao_id = str(
-            registro.get(
-                "acao_corretiva_id"
-            )
-            or ""
-        ).strip()
-
-
-        exibicao = str(
-            registro.get(
-                "responsavel_exibicao"
-            )
-            or ""
-        ).strip()
-
-
-        metodo = str(
-            registro.get(
-                "metodo_identidade_responsavel"
-            )
-            or ""
-        ).strip()
-
-
-        if not exibicao:
-
-            sem_exibicao.append(
-                acao_id
-            )
-
-
-        if not metodo:
-
-            sem_metodo.append(
-                acao_id
-            )
-
-            continue
-
-
-        if metodo not in esperados:
-
-            metodo_invalido.append(
-                (
-                    acao_id,
-                    metodo,
-                )
-            )
-
-            continue
-
-
-        contadores[
-            metodo
-        ] += 1
-
-
-    if sem_exibicao:
-
-        raise RuntimeError(
-            "Acoes sem responsavel_exibicao: "
-            + str(
-                sem_exibicao[:20]
-            )
-        )
-
-
-    if sem_metodo:
-
-        raise RuntimeError(
-            "Acoes sem metodo de identidade: "
-            + str(
-                sem_metodo[:20]
-            )
-        )
-
-
-    if metodo_invalido:
-
-        raise RuntimeError(
-            "Metodo de identidade invalido: "
-            + str(
-                metodo_invalido[:20]
-            )
-        )
-
-
-    if contadores != esperados:
-
-        raise RuntimeError(
-            "Distribuicao da identidade "
-            "divergente. Obtido: "
-            + str(
-                contadores
-            )
-            + " | Esperado: "
-            + str(
-                esperados
-            )
-        )
-
-
-    return contadores
-
+        acao_id = str(registro.get("acao_corretiva_id") or "").strip()
+        if not str(registro.get("responsavel_exibicao") or "").strip():
+            raise RuntimeError("Acao sem responsavel_exibicao: " + acao_id)
+        metodo = str(registro.get("metodo_identidade_responsavel") or "").strip()
+        if metodo not in metodos:
+            raise RuntimeError("Metodo de identidade invalido: " + acao_id)
+        contadores[metodo] += 1
+    if sum(contadores.values()) != len(registros):
+        raise RuntimeError("Metodos de identidade nao fecharam com o volume.")
+    return dict(sorted(contadores.items()))
 
 # =========================================================
 # CONFIGURACAO SUPABASE
@@ -526,166 +416,39 @@ def carregar_ouro():
 # QUALITY GATE LOCAL
 # =========================================================
 
-def validar_local(
-    registros,
-):
 
-    if len(
-        registros
-    ) != 613:
+GRUPOS_ACOES_VALIDOS = {"SEGURANCA", "OUTRAS_AREAS"}
+SITUACOES_ACOES_VALIDAS = {
+    "EM_PRAZO", "VENCIDO", "FECHADO", "FECHADO_APOS_PRAZO",
+}
+CAMPOS_COMPARACAO_ACOES = (
+    "grupo_sso", "situacao_gerencial", "divergencia_status_prazo",
+    "registros_origem", "duplicado_origem",
+)
 
-        raise RuntimeError(
-            "Quantidade local inesperada: "
-            + str(
-                len(
-                    registros
-                )
-            )
-        )
-
-
-    ids = [
-        registro.get(
-            "acao_corretiva_id"
-        )
-        for registro
-        in registros
-    ]
-
-    if any(
-        not acao_id
-        for acao_id in ids
-    ):
-
-        raise RuntimeError(
-            "Existe Acao Corretiva sem ID."
-        )
-
-    if len(
-        ids
-    ) != len(
-        set(
-            ids
-        )
-    ):
-
-        raise RuntimeError(
-            "Existem IDs duplicados "
-            "no arquivo Ouro."
-        )
+def validar_local(registros):
+    if not registros:
+        raise RuntimeError("Ouro de Acoes vazio.")
+    ids = [str(r.get("acao_corretiva_id") or "").strip() for r in registros]
+    if any(not chave for chave in ids) or len(set(ids)) != len(ids):
+        raise RuntimeError("Ouro de Acoes com IDs ausentes ou duplicados.")
+    if any(r.get("grupo_sso") not in GRUPOS_ACOES_VALIDOS for r in registros):
+        raise RuntimeError("Grupo SSO invalido no Ouro.")
+    if any(r.get("situacao_gerencial") not in SITUACOES_ACOES_VALIDAS for r in registros):
+        raise RuntimeError("Situacao gerencial invalida no Ouro.")
+    for r in registros:
+        if int(r.get("divergencia_status_prazo") or 0) != 0:
+            raise RuntimeError("Divergencia fonte x prazo na Acao " + str(r.get("acao_corretiva_id")))
+        origem = int(r.get("registros_origem") or 0)
+        duplicado = int(r.get("duplicado_origem") or 0)
+        if origem < 1 or duplicado not in (0, 1) or duplicado != int(origem > 1):
+            raise RuntimeError("Contagem de origem incoerente na Acao " + str(r.get("acao_corretiva_id")))
 
 
-    grupos = Counter(
-        registro.get(
-            "grupo_sso"
-        )
-        for registro
-        in registros
-    )
-
-    esperado_grupos = {
-        "OUTRAS_AREAS": 388,
-        "SEGURANCA": 225,
-    }
-
-    if dict(
-        grupos
-    ) != esperado_grupos:
-
-        raise RuntimeError(
-            "Distribuicao grupo_sso divergente: "
-            + str(
-                dict(
-                    grupos
-                )
-            )
-        )
-
-
-    situacoes = Counter(
-        registro.get(
-            "situacao_gerencial"
-        )
-        for registro
-        in registros
-    )
-
-    esperado_situacoes = {
-        "EM_PRAZO": 102,
-        "VENCIDO": 126,
-        "FECHADO": 295,
-        "FECHADO_APOS_PRAZO": 90,
-    }
-
-    if dict(
-        situacoes
-    ) != esperado_situacoes:
-
-        raise RuntimeError(
-            "Situacao gerencial divergente: "
-            + str(
-                dict(
-                    situacoes
-                )
-            )
-        )
-
-
-    divergencias = sum(
-        int(
-            registro.get(
-                "divergencia_status_prazo"
-            )
-            or 0
-        )
-        for registro
-        in registros
-    )
-
-    if divergencias != 0:
-
-        raise RuntimeError(
-            "Existem divergencias "
-            "fonte x prazo: "
-            + str(
-                divergencias
-            )
-        )
-
-
-    acao_584 = [
-        registro
-        for registro
-        in registros
-        if registro.get(
-            "acao_corretiva_id"
-        )
-        == "584"
-    ]
-
-    if len(
-        acao_584
-    ) != 1:
-
-        raise RuntimeError(
-            "Acao 584 deveria existir "
-            "uma unica vez."
-        )
-
-    if int(
-        acao_584[
-            0
-        ].get(
-            "registros_origem"
-        )
-        or 0
-    ) != 2:
-
-        raise RuntimeError(
-            "Acao 584 perdeu "
-            "registros_origem = 2."
-        )
-
+def assinatura_acoes(registro):
+    # Comparar em string para neutralizar diferencas int/texto do PostgREST.
+    return tuple(str(registro.get(c) if registro.get(c) is not None else "").strip()
+                 for c in CAMPOS_COMPARACAO_ACOES)
 
 # =========================================================
 # SUPABASE - CONTAGEM
@@ -748,212 +511,43 @@ def contar_remoto(
 # SUPABASE - DISTRIBUICOES
 # =========================================================
 
-def carregar_resumo_remoto(
-    cliente,
-    tabela,
-    carga_id=None,
-):
 
-    consulta = (
-        cliente
-        .table(
-            tabela
+def carregar_resumo_remoto(cliente, tabela, carga_id=None):
+    # Resultados PostgREST podem ser truncados mesmo para consultas sem limit.
+    registros = []
+    tamanho_pagina = 500
+    for pagina in range(200):
+        consulta = cliente.table(tabela).select(
+            "acao_corretiva_id,grupo_sso,situacao_gerencial,"
+            "divergencia_status_prazo,registros_origem,duplicado_origem"
         )
-        .select(
-            ",".join(
-                [
-                    "acao_corretiva_id",
-                    "grupo_sso",
-                    "situacao_gerencial",
-                    "divergencia_status_prazo",
-                    "registros_origem",
-                    "duplicado_origem",
-                ]
-            )
-        )
-    )
-
-    if carga_id is not None:
-
-        consulta = (
-            consulta
-            .eq(
-                "carga_id",
-                carga_id,
-            )
-        )
-
-    resposta = (
-        consulta
-        .range(
-            0,
-            999
-        )
-        .execute()
-    )
-
-    dados = (
-        resposta.data
-        or []
-    )
-
-    return dados
+        if carga_id is not None:
+            consulta = consulta.eq("carga_id", carga_id)
+        dados = consulta.order("acao_corretiva_id").range(
+            pagina * tamanho_pagina, (pagina + 1) * tamanho_pagina - 1
+        ).execute().data
+        if not isinstance(dados, list):
+            raise RuntimeError("Resposta remota invalida para " + tabela)
+        registros.extend(dados)
+        if len(dados) < tamanho_pagina:
+            return registros
+    raise RuntimeError("Paginacao excedida ao consultar " + tabela)
 
 
-def validar_resumo_remoto(
-    registros,
-    contexto,
-):
-
-    if len(
-        registros
-    ) != 613:
-
-        raise RuntimeError(
-            f"{contexto}: quantidade divergente: "
-            + str(
-                len(
-                    registros
-                )
-            )
-        )
-
-
-    ids = [
-        str(
-            registro.get(
-                "acao_corretiva_id"
-            )
-            or
-            ""
-        ).strip()
-        for registro
-        in registros
-    ]
-
-    if len(
-        set(
-            ids
-        )
-    ) != 613:
-
-        raise RuntimeError(
-            f"{contexto}: IDs nao sao unicos."
-        )
-
-
-    grupos = Counter(
-        registro.get(
-            "grupo_sso"
-        )
-        for registro
-        in registros
-    )
-
-    if dict(
-        grupos
-    ) != {
-        "OUTRAS_AREAS": 388,
-        "SEGURANCA": 225,
-    }:
-
-        raise RuntimeError(
-            f"{contexto}: grupo_sso divergente: "
-            + str(
-                dict(
-                    grupos
-                )
-            )
-        )
-
-
-    situacoes = Counter(
-        registro.get(
-            "situacao_gerencial"
-        )
-        for registro
-        in registros
-    )
-
-    if dict(
-        situacoes
-    ) != {
-        "EM_PRAZO": 102,
-        "VENCIDO": 126,
-        "FECHADO": 295,
-        "FECHADO_APOS_PRAZO": 90,
-    }:
-
-        raise RuntimeError(
-            f"{contexto}: situacao gerencial "
-            "divergente: "
-            + str(
-                dict(
-                    situacoes
-                )
-            )
-        )
-
-
-    divergencias = sum(
-        int(
-            registro.get(
-                "divergencia_status_prazo"
-            )
-            or 0
-        )
-        for registro
-        in registros
-    )
-
-    if divergencias != 0:
-
-        raise RuntimeError(
-            f"{contexto}: existem divergencias "
-            "fonte x prazo: "
-            + str(
-                divergencias
-            )
-        )
-
-
-    acao_584 = [
-        registro
-        for registro
-        in registros
-        if str(
-            registro.get(
-                "acao_corretiva_id"
-            )
-            or
-            ""
-        ).strip()
-        == "584"
-    ]
-
-    if len(
-        acao_584
-    ) != 1:
-
-        raise RuntimeError(
-            f"{contexto}: acao 584 "
-            "nao esta unica."
-        )
-
-    if int(
-        acao_584[
-            0
-        ].get(
-            "registros_origem"
-        )
-        or 0
-    ) != 2:
-
-        raise RuntimeError(
-            f"{contexto}: acao 584 perdeu "
-            "registros_origem = 2."
-        )
-
+def validar_resumo_remoto(registros, contexto, esperados):
+    validar_local(esperados)
+    if len(registros) != len(esperados):
+        raise RuntimeError(f"{contexto}: quantidade divergente de Ouro local.")
+    local = {str(r["acao_corretiva_id"]).strip(): assinatura_acoes(r) for r in esperados}
+    remoto = {}
+    for r in registros:
+        identidade = str(r.get("acao_corretiva_id") or "").strip()
+        if not identidade or identidade in remoto:
+            raise RuntimeError(f"{contexto}: ID remoto ausente ou duplicado.")
+        remoto[identidade] = assinatura_acoes(r)
+    if remoto != local:
+        divergentes = sorted(k for k in set(remoto) | set(local) if remoto.get(k) != local.get(k))
+        raise RuntimeError(f"{contexto}: divergencia Ouro x banco (IDs amostra): {divergentes[:10]}")
 
 # =========================================================
 # STAGING
@@ -1282,6 +876,7 @@ def executar(
         validar_resumo_remoto(
             resumo_staging,
             "STAGING",
+            registros,
         )
 
         print(
@@ -1352,6 +947,7 @@ def executar(
         validar_resumo_remoto(
             resumo_mart,
             "MART",
+            registros,
         )
 
         print(

@@ -1,704 +1,273 @@
-from pathlib import Path
+"""Portal SSO: orquestrador operacional proposto (RM, Cobli, Prevsys e AVCB).
+
+Um BAT existente chama main() sem argumentos. NAO executar em producao ate
+implantar e autorizar o contrato incremental do Historico.
+
+--plano: mostra a sequencia, sem dependencias ou rede.
+--verificar: checa integridade local, sem extracao ou rede.
+Sem argumentos: preflight remoto de leitura ANTES de qualquer extracao,
+seguido do ETL completo com controle de estados de publicacao.
+
+Velocidade nao e extraida nem publicada. Bronze/Prata/Ouro nao sao apagados.
+"""
+from __future__ import annotations
+
+import argparse
+import hashlib
 import os
-import shutil
+from pathlib import Path
 import subprocess
 import sys
-import uuid
 
 
-RAIZ = Path(
-    __file__
-).resolve().parents[1]
-
+RAIZ = Path(__file__).resolve().parents[1]
 DATA = RAIZ / "data"
+MOTORISTAS = RAIZ / "backend" / "motoristas"
 
 
+def backend(*partes: str) -> Path:
+    return RAIZ.joinpath("backend", *partes)
+
+
+# Ordem historica do projeto: RM / mapa mestre -> Cobli -> Prevsys / AVCB.
+# Publicacoes separadas sao relatadas separadamente, sem rollback ficticio.
 ETAPAS = [
-    (
-        "COLABORADORES - EXTRACAO RM",
-        RAIZ
-        / "backend"
-        / "cadastros"
-        / "colaboradores"
-        / "extrair_colaboradores.py",
-    ),
-    (
-        "COLABORADORES - MAPA MESTRE",
-        RAIZ
-        / "backend"
-        / "cadastros"
-        / "colaboradores"
-        / "gerar_mapa_colaboradores.py",
-    ),
-    (
-        "MOTORISTAS - EXTRACAO CADASTRO COBLI",
-        RAIZ
-        / "backend"
-        / "motoristas"
-        / "extrair_cobli_motoristas.py",
-    ),
-    (
-        "MOTORISTAS - CAMADA PRATA CADASTRO",
-        RAIZ
-        / "backend"
-        / "motoristas"
-        / "tratar_motoristas.py",
-    ),
-    (
-        "MOTORISTAS - QUALITY GATE CADASTRO",
-        RAIZ
-        / "backend"
-        / "motoristas"
-        / "validar_prata_motoristas.py",
-    ),
-    (
-        "MOTORISTAS - EXTRACOES COBLI SINCRONIZADAS",
-        RAIZ
-        / "backend"
-        / "motoristas"
-        / "executar_extracoes_cobli_sincronizadas.py",
-    ),
-    (
-        "MOTORISTAS - CAMADA PRATA VIAGENS",
-        RAIZ
-        / "backend"
-        / "motoristas"
-        / "tratar_motorista_veiculo.py",
-    ),
-    (
-        "MOTORISTAS - QUALITY GATE VIAGENS",
-        RAIZ
-        / "backend"
-        / "motoristas"
-        / "validar_prata_motorista_veiculo.py",
-    ),
-    (
-        "MOTORISTAS - CAMADA PRATA SEGURANCA",
-        RAIZ
-        / "backend"
-        / "motoristas"
-        / "tratar_seguranca_motoristas.py",
-    ),
-    (
-        "MOTORISTAS - QUALITY GATE SEGURANCA",
-        RAIZ
-        / "backend"
-        / "motoristas"
-        / "validar_prata_seguranca_motoristas.py",
-    ),
-    (
-        "MOTORISTAS - CAMADA OURO",
-        RAIZ
-        / "backend"
-        / "motoristas"
-        / "gerar_ouro_motoristas.py",
-    ),
-    (
-        "PREVSYS - EXTRACOES",
-        RAIZ
-        / "backend"
-        / "prevsys"
-        / "extrair_prevsys.py",
-    ),
-    (
-        "INSPECOES - CAMADA PRATA",
-        RAIZ
-        / "backend"
-        / "inspecoes"
-        / "tratar_quantidade.py",
-    ),
-    (
-        "INSPECOES - CAMADA OURO",
-        RAIZ
-        / "backend"
-        / "inspecoes"
-        / "gerar_ouro_inspecoes.py",
-    ),
-    (
-        "AVCB - EXTRACAO",
-        RAIZ
-        / "backend"
-        / "avcb"
-        / "extrair_avcb.py",
-    ),
-    (
-        "AVCB - QUALITY GATE BRONZE",
-        RAIZ
-        / "backend"
-        / "avcb"
-        / "validar_qualidade.py",
-    ),
-    (
-        "AVCB - CAMADA PRATA",
-        RAIZ
-        / "backend"
-        / "avcb"
-        / "tratar_avcb.py",
-    ),
-    (
-        "AVCB - CAMADA OURO",
-        RAIZ
-        / "backend"
-        / "avcb"
-        / "gerar_ouro_avcb.py",
-    ),
-    (
-        "PLANOS DE ACAO - CAMADA PRATA",
-        RAIZ
-        / "backend"
-        / "planos_acao"
-        / "tratar_planos_acao.py",
-    ),
-    (
-        "PLANOS DE ACAO - CAMADA OURO",
-        RAIZ
-        / "backend"
-        / "planos_acao"
-        / "gerar_ouro_planos_acao.py",
-    ),
-    (
-        "PUBLICACAO GLOBAL ATOMICA",
-        RAIZ
-        / "backend"
-        / "publicar_pipeline_sso.py",
-    ),
+    ("COLABORADORES - EXTRACAO RM", backend("cadastros", "colaboradores", "extrair_colaboradores.py")),
+    ("COLABORADORES - MAPA MESTRE", backend("cadastros", "colaboradores", "gerar_mapa_colaboradores.py")),
+    ("MOTORISTAS - EXTRACAO CADASTRO COBLI", backend("motoristas", "extrair_cobli_motoristas.py")),
+    ("MOTORISTAS - CAMADA PRATA CADASTRO", backend("motoristas", "tratar_motoristas.py")),
+    ("MOTORISTAS - QUALITY GATE CADASTRO", backend("motoristas", "validar_prata_motoristas.py")),
+    ("MOTORISTAS - EXTRACOES COBLI SINCRONIZADAS", backend("motoristas", "executar_extracoes_cobli_sincronizadas.py")),
+    ("MOTORISTAS - CAMADA PRATA VIAGENS", backend("motoristas", "tratar_motorista_veiculo.py")),
+    ("MOTORISTAS - QUALITY GATE VIAGENS", backend("motoristas", "validar_prata_motorista_veiculo.py")),
+    ("HISTORICO MOTORISTAS - QUALITY GATE LOCAL", backend("motoristas", "publicar_historico_motoristas.py")),
+    ("MOTORISTAS - CAMADA PRATA SEGURANCA", backend("motoristas", "tratar_seguranca_motoristas.py")),
+    ("MOTORISTAS - QUALITY GATE SEGURANCA", backend("motoristas", "validar_prata_seguranca_motoristas.py")),
+    ("MOTORISTAS - CAMADA OURO", backend("motoristas", "gerar_ouro_motoristas.py")),
+    ("PREVSYS - EXTRACOES", backend("prevsys", "extrair_prevsys.py")),
+    ("INSPECOES - CAMADA PRATA", backend("inspecoes", "tratar_quantidade.py")),
+    ("INSPECOES - CAMADA OURO", backend("inspecoes", "gerar_ouro_inspecoes.py")),
+    ("AVCB - EXTRACAO", backend("avcb", "extrair_avcb.py")),
+    ("AVCB - QUALITY GATE BRONZE", backend("avcb", "validar_qualidade.py")),
+    ("AVCB - CAMADA PRATA", backend("avcb", "tratar_avcb.py")),
+    ("AVCB - CAMADA OURO", backend("avcb", "gerar_ouro_avcb.py")),
+    ("PLANOS DE ACAO - CAMADA PRATA", backend("planos_acao", "tratar_planos_acao.py")),
+    ("PLANOS DE ACAO - CAMADA OURO", backend("planos_acao", "gerar_ouro_planos_acao.py")),
+    ("ACOES CORRETIVAS - CAMADA PRATA", backend("acoes_corretivas", "tratar_acoes_corretivas.py")),
+    ("ACOES CORRETIVAS - CAMADA OURO", backend("acoes_corretivas", "gerar_ouro_acoes_corretivas.py")),
+    ("PUBLICACAO GLOBAL ATOMICA", backend("publicar_pipeline_sso.py")),
+    ("PUBLICACAO ACOES CORRETIVAS (TRANSACAO SEPARADA)", backend("acoes_corretivas", "publicar_ouro_acoes_corretivas.py")),
+    ("HISTORICO MOTORISTAS - PUBLICACAO INCREMENTAL (TRANSACAO SEPARADA)", backend("motoristas", "publicar_historico_motoristas.py")),
 ]
 
+# Hash dos dois scripts de isolamento de Velocidade ja instalados na Etapa 2D.
+# Evita que uma copia antiga seja executada acidentalmente pelo BAT.
+HASHES_ISOLAMENTO = {
+    "backend/publicar_pipeline_sso.py": "86250a800f4177beee2233ccbfdb9125151181dad39f8747134647b8fec9bebc",
+    "backend/motoristas/executar_extracoes_cobli_sincronizadas.py": "2a73e4fa5301043d8f673d92bcb6399395cf454b89b494a1d01c5a600e386439",
+}
 
-def executar_etapa(
-    numero,
-    total,
-    nome,
-    script,
-):
+PUBLICACOES = {
+    "PUBLICACAO GLOBAL ATOMICA": "nucleo",
+    "PUBLICACAO ACOES CORRETIVAS (TRANSACAO SEPARADA)": "acoes",
+    "HISTORICO MOTORISTAS - PUBLICACAO INCREMENTAL (TRANSACAO SEPARADA)": "historico",
+}
 
-    print()
-    print("=" * 78)
-    print(
-        f"ETAPA {numero}/{total} - {nome}"
-    )
-    print("=" * 78)
 
-    if not script.exists():
+def conferir_arquivos() -> None:
+    if len(ETAPAS) != 26:
+        raise RuntimeError("Contrato de 26 etapas inesperado.")
+    if not all(script.is_file() for _, script in ETAPAS):
+        faltam = [nome for nome, script in ETAPAS if not script.is_file()]
+        raise RuntimeError("Scripts ausentes: " + ", ".join(faltam))
+    for relativo, esperado in HASHES_ISOLAMENTO.items():
+        atual = hashlib.sha256((RAIZ / relativo).read_bytes()).hexdigest()
+        if atual != esperado:
+            raise RuntimeError("Isolamento de Velocidade alterado: " + relativo)
+    historico = (MOTORISTAS / "publicar_historico_motoristas.py").read_text(encoding="utf-8-sig")
+    for marcador in ("--local-only", "--publicar-producao", "--verificar-ambiente-prod"):
+        if marcador not in historico:
+            raise RuntimeError("Publicador de Historico nao contem " + marcador)
 
-        raise RuntimeError(
-            "Script nao encontrado: "
-            f"{script}"
-        )
 
-    resultado = subprocess.run(
-        [
-            sys.executable,
-            str(script),
-        ],
-        cwd=RAIZ,
-    )
+def listar_plano() -> None:
+    print("PORTAL SSO - ORQUESTRADOR INTEGRADO (PROPOSTA)")
+    for indice, (nome, _) in enumerate(ETAPAS, 1):
+        if nome == "HISTORICO MOTORISTAS - QUALITY GATE LOCAL":
+            nome += "  [--local-only]"
+        if nome in PUBLICACOES and PUBLICACOES[nome] == "historico":
+            nome += "  [--publicar-producao]"
+        print(f"{indice:02d}. {nome}")
+    print("Velocidade: ISOLADA; cleanup: DESABILITADO")
+    print("Contrato Historico na PRODUCAO: pendente de migracao e aprovacao especifica")
 
+
+def executar_etapa(indice: int, nome: str, script: Path, args: list[str] | None = None,
+                   variaveis: dict[str, str] | None = None) -> None:
+    print(f"\n{'=' * 72}\nETAPA {indice}/{len(ETAPAS)} - {nome}\n{'=' * 72}", flush=True)
+    resultado = subprocess.run([sys.executable, "-B", str(script), *(args or [])],
+                               cwd=str(RAIZ), env=variaveis, check=False)
     if resultado.returncode != 0:
+        raise RuntimeError(f"Etapa {indice} interrompida: {nome} (codigo {resultado.returncode})")
+    print("ETAPA APROVADA:", nome, flush=True)
 
-        raise RuntimeError(
-            f"Etapa falhou: {nome}. "
-            f"Codigo: {resultado.returncode}"
-        )
 
-    print()
-    print(
-        f"ETAPA APROVADA: {nome}"
+def instantaneo_bronzes() -> dict[str, tuple[int, int]]:
+    pasta = DATA / "bronze" / "motoristas"
+    return {p.name: (p.stat().st_mtime_ns, p.stat().st_size)
+            for p in pasta.glob("cobli_trips_stops_*.json") if p.is_file()}
+
+
+def bronze_novo(antes: dict[str, tuple[int, int]]) -> str:
+    depois = instantaneo_bronzes()
+    alterados = [nome for nome, info in depois.items() if antes.get(nome) != info]
+    if len(alterados) != 1:
+        raise RuntimeError("Cobli deveria gerar exatamente uma Bronze Trips/Stops nova ou renovada; encontradas: " + str(len(alterados)))
+    return alterados[0]
+
+
+def status_final(estados: dict[str, str]) -> None:
+    print("\n===== STATUS DE PUBLICACOES (TRANSACOES INDEPENDENTES) =====", flush=True)
+    for nome, estado in estados.items():
+        print(f"{nome.upper()}: {estado}", flush=True)
+    print("VELOCIDADE: BLOQUEADA; DATA/: PRESERVADA; CLEANUP: DESABILITADO", flush=True)
+
+
+def preflight_remoto() -> None:
+    """Leitura HML nao permitida aqui. Apenas PROD, flags e staging acessivel.
+
+    Historico verifica URL/segredo de PROD, 2 flags de habilitacao e staging
+    vazia, ANTES de qualquer extracao. A RPC precisa ser instalada e aprovada
+    antes que essas flags sejam definidas. Jamais chamar a RPC no preflight.
+    """
+    script = MOTORISTAS / "publicar_historico_motoristas.py"
+    print("PREFLIGHT DE PRODUCAO (SOMENTE LEITURA), ANTES DAS EXTRACOES", flush=True)
+    proc = subprocess.run([sys.executable, "-B", str(script), "--verificar-ambiente-prod"],
+                          cwd=str(RAIZ), check=False)
+    if proc.returncode != 0:
+        raise RuntimeError("Historico de producao nao habilitado/indisponivel. Nenhuma extracao iniciada.")
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="Orquestracao Portal SSO - RM, Cobli, Prevsys e AVCB")
+    parser.add_argument("--plano", action="store_true", help="Somente mostrar etapas")
+    parser.add_argument("--verificar", action="store_true", help="Checagem estatica sem rede ou execucao")
+    parser.add_argument(
+        "--retomar-14a23",
+        action="store_true",
+        help="Executar somente etapas 14 a 23, sem publicacoes",
     )
+    args = parser.parse_args()
+    if args.plano:
+        listar_plano()
+        return 0
+    try:
+        conferir_arquivos()
+        if args.verificar:
+            print("INTEGRACAO LOCAL: 26 ETAPAS E ISOLAMENTO DE VELOCIDADE VERIFICADOS")
+            print("SEM ETL | SEM REDE | SEM SQL | SEM ALTERACAO DE ARQUIVOS")
+            return 0
+        if args.retomar_14a23:
+            if (
+                len(ETAPAS) != 26
+                or ETAPAS[13][0] != "INSPECOES - CAMADA PRATA"
+                or ETAPAS[22][0] != "ACOES CORRETIVAS - CAMADA OURO"
+                or ETAPAS[23][0] != "PUBLICACAO GLOBAL ATOMICA"
+            ):
+                raise RuntimeError("Contrato da retomada mudou.")
 
+            arquivos_exigidos = [
+                DATA / "bronze" / "inspecoes" / "quantidade"
+                    / "Detalle_Checklist.xlsx",
+                DATA / "bronze" / "planos_acao"
+                    / "Planos_de_acao_detalhados.xlsx",
+                DATA / "bronze" / "acoes_corretivas"
+                    / "Detalhes_das_acoes_corretivas.xlsx",
+                DATA / "ouro" / "motoristas"
+                    / "mart_motoristas.xlsx",
+            ]
 
-ARQUIVOS_OPERACIONAIS = [
-    Path(
-        r"prata\motoristas\motoristas.csv"
-    ),
-    Path(
-        r"prata\motoristas\revisao_nomes_motoristas.csv"
-    ),
-    Path(
-        r"prata\motoristas\motorista_veiculo.csv"
-    ),
-    Path(
-        r"prata\motoristas\seguranca_motoristas.csv"
-    ),
-    Path(
-        r"ouro\motoristas\mart_motoristas.xlsx"
-    ),
-    Path(
-        r"bronze\avcb\Controle de AVCB.xlsx"
-    ),
-    Path(
-        r"bronze\cadastros\colaboradores"
-        r"\Colaboradores_RM.xlsx"
-    ),
-    Path(
-        r"bronze\cadastros\colaboradores"
-        r"\Colaboradores_Folha_RM.xlsx"
-    ),
-    Path(
-        r"bronze\inspecoes\quantidade"
-        r"\Detalle_Checklist.xlsx"
-    ),
-    Path(
-        r"master\colaboradores"
-        r"\mapa_colaboradores.csv"
-    ),
-    Path(
-        r"ouro\avcb\mart_avcb.xlsx"
-    ),
-    Path(
-        r"ouro\inspecoes\mart_inspecoes.xlsx"
-    ),
-    Path(
-        r"prata\avcb\avcb_prata.xlsx"
-    ),
-    Path(
-        r"prata\inspecoes\quantidade"
-        r"\criadores_para_classificar.csv"
-    ),
-    Path(
-        r"prata\inspecoes\quantidade"
-        r"\Inspecoes_Quantidade.xlsx"
-    ),
-    Path(
-        r"bronze\planos_acao\Planos_de_acao_detalhados.xlsx"
-    ),
-    Path(
-        r"prata\planos_acao\Planos_de_acao.xlsx"
-    ),
-    Path(
-        r"ouro\planos_acao\mart_planos_acao.xlsx"
-    ),
-    Path(
-        r"diagnosticos\planos_acao_dom_menu.png"
-    ),
-    Path(
-        r"diagnosticos\planos_acao_menu.png"
-    ),
-    Path(
-        r"diagnosticos\prevsis_detalle_nao_encontrado.png"
-    ),
-
-]
-
-
-def arquivos_temporarios():
-
-    if not DATA.exists():
-
-        return []
-
-    return sorted(
-        arquivo
-        for arquivo in DATA.rglob("*")
-        if arquivo.is_file()
-        and (
-            arquivo.name.endswith(
-                "_novo.xlsx"
-            )
-            or arquivo.name.endswith(
-                "_novo.xls"
-            )
-        )
-    )
-
-
-def arquivos_conhecidos():
-
-    conhecidos = {
-        DATA / relativo
-        for relativo in ARQUIVOS_OPERACIONAIS
-    }
-
-    conhecidos.update(
-        arquivos_temporarios()
-    )
-
-    # Bronzes Cobli possuem timestamp no nome.
-    # Apenas os tres contratos conhecidos de Motoristas
-    # pertencem a fronteira de cleanup.
-
-    pasta_bronze_motoristas = (
-        DATA
-        / "bronze"
-        / "motoristas"
-    )
-
-    if pasta_bronze_motoristas.exists():
-
-        for padrao in [
-            "cobli_motoristas_*.json",
-            "cobli_trips_stops_*.json",
-            "cobli_safety_driver_*.json",
-        ]:
-
-            conhecidos.update(
-                pasta_bronze_motoristas.glob(
-                    padrao
-                )
-            )
-
-    return conhecidos
-
-
-def validar_fronteira_cleanup():
-
-    if not DATA.exists():
-
-        return
-
-    existentes = {
-        arquivo
-        for arquivo in DATA.rglob("*")
-        if arquivo.is_file()
-    }
-
-    conhecidos = arquivos_conhecidos()
-
-    desconhecidos = sorted(
-        existentes - conhecidos
-    )
-
-    if desconhecidos:
-
-        raise RuntimeError(
-            "Cleanup bloqueado. "
-            "Arquivos desconhecidos encontrados "
-            "em data/: "
-            + ", ".join(
-                str(
-                    arquivo.relative_to(
-                        RAIZ
+            for fonte in arquivos_exigidos:
+                if not fonte.is_file() or fonte.stat().st_size == 0:
+                    raise RuntimeError(
+                        f"Artefato de retomada ausente ou vazio: {fonte}"
                     )
-                )
-                for arquivo in desconhecidos
+
+            print(
+                "RETOMADA LOCAL: ETAPAS 14-23; "
+                "PUBLICACOES 24-26 BLOQUEADAS",
+                flush=True,
             )
-        )
+        else:
+            # Modo normal: preserva o preflight de producao.
+            preflight_remoto()
+    except Exception as exc:
+        print("BLOQUEIO ANTES DE QUALQUER EXTRACAO:", exc, file=sys.stderr)
+        return 2
 
-
-def listar_arquivos_operacionais():
-
-    if not DATA.exists():
-
-        return []
-
-    validar_fronteira_cleanup()
-
-    return sorted(
-        arquivo
-        for arquivo in arquivos_conhecidos()
-        if arquivo.exists()
-    )
-
-
-def remover_pastas_vazias():
-
-    if not DATA.exists():
-
-        return
-
-    pastas = sorted(
-        (
-            pasta
-            for pasta in DATA.rglob("*")
-            if pasta.is_dir()
-        ),
-        key=lambda pasta: len(
-            pasta.parts
-        ),
-        reverse=True,
-    )
-
-    for pasta in pastas:
-
-        try:
-
-            pasta.rmdir()
-
-        except OSError:
-
-            pass
-
-
-def limpar_dados_operacionais():
-
-    print()
-    print("=" * 78)
-    print("CLEANUP LOCAL")
-    print("=" * 78)
-
-    if not DATA.exists():
-
-        print(
-            "Pasta data nao existe. "
-            "Nada para remover."
-        )
-
-        return
-
-
-    arquivos = (
-        listar_arquivos_operacionais()
-    )
-
-    print(
-        "Arquivos operacionais encontrados:",
-        len(arquivos),
-    )
-
-
-    if not arquivos:
-
-        print(
-            "Nenhum arquivo operacional "
-            "para remover."
-        )
-
-        remover_pastas_vazias()
-
-        return
-
-
-    quarentena = (
-        DATA
-        / (
-            ".cleanup_"
-            + uuid.uuid4().hex
-        )
-    )
-
-    quarentena.mkdir(
-        parents=True,
-        exist_ok=False,
-    )
-
-
-    movidos = []
-
+    estados = {"nucleo": "NAO INICIADO", "acoes": "NAO INICIADO", "historico": "NAO INICIADO"}
+    bronze_antes = instantaneo_bronzes()
+    bronze_selecionada = None
+    bronze_acoes = DATA / "bronze" / "acoes_corretivas" / "Detalhes_das_acoes_corretivas.xlsx"
+    mtime_acao_anterior = bronze_acoes.stat().st_mtime_ns if bronze_acoes.is_file() else None
+    print("PIPELINE SSO - INTEGRACAO GLOBAL AUTORIZADA")
+    print("HISTORICOS E ARQUIVOS EXISTENTES: PRESERVADOS; SEM CLEANUP AUTOMATICO")
 
     try:
+        for indice, (nome, script) in enumerate(ETAPAS, 1):
+            if args.retomar_14a23 and not (14 <= indice <= 23):
+                continue
 
-        print(
-            "Movendo arquivos para "
-            "quarentena local..."
-        )
+            argumentos = []
+            ambiente = os.environ.copy()
+            if nome == "HISTORICO MOTORISTAS - QUALITY GATE LOCAL":
+                argumentos = ["--local-only"]
+            elif nome == "HISTORICO MOTORISTAS - PUBLICACAO INCREMENTAL (TRANSACAO SEPARADA)":
+                argumentos = ["--publicar-producao"]
+            if nome.startswith("HISTORICO MOTORISTAS"):
+                if not bronze_selecionada:
+                    raise RuntimeError("Bronze Cobli desta execucao ainda nao identificada.")
+                ambiente["COBLI_BRONZE_TRIPS_STOPS"] = bronze_selecionada
 
-        for origem in arquivos:
+            publicacao = PUBLICACOES.get(nome)
+            if publicacao:
+                estados[publicacao] = "INICIADA (RESULTADO REMOTO PODE ESTAR INDETERMINADO)"
+            executar_etapa(indice, nome, script, argumentos, ambiente)
+            if publicacao:
+                estados[publicacao] = "CONCLUIDA E CONFIRMADA PELO PUBLICADOR"
 
-            relativo = origem.relative_to(
-                DATA
+            if nome == "MOTORISTAS - EXTRACOES COBLI SINCRONIZADAS":
+                bronze_selecionada = bronze_novo(bronze_antes)
+                print("Bronze Trips/Stops selecionada:", bronze_selecionada)
+            if nome == "PREVSYS - EXTRACOES":
+                if not bronze_acoes.is_file():
+                    raise RuntimeError("Prevsys nao gerou Bronze de Acoes Corretivas.")
+                if mtime_acao_anterior is not None and bronze_acoes.stat().st_mtime_ns == mtime_acao_anterior:
+                    raise RuntimeError("Bronze de Acoes Corretivas nao foi renovada na execucao.")
+                print("Bronze Prevsys de Acoes Corretivas renovada.")
+
+        if args.retomar_14a23:
+            print(
+                "\nRETOMADA CONCLUIDA: ETAPAS 14 A 23 APROVADAS",
+                flush=True,
             )
-
-            destino = (
-                quarentena
-                / relativo
+            print(
+                "PUBLICACOES 24-26: NAO EXECUTADAS",
+                flush=True,
             )
+            status_final(estados)
+            return 0
 
-            destino.parent.mkdir(
-                parents=True,
-                exist_ok=True,
-            )
-
-            os.replace(
-                origem,
-                destino,
-            )
-
-            movidos.append(
-                (
-                    origem,
-                    destino,
-                )
-            )
-
-
-    except Exception:
-
-        print(
-            "Falha antes da exclusao. "
-            "Tentando restaurar dados..."
-        )
-
-        for origem, destino in reversed(
-            movidos
-        ):
-
-            if destino.exists():
-
-                origem.parent.mkdir(
-                    parents=True,
-                    exist_ok=True,
-                )
-
-                os.replace(
-                    destino,
-                    origem,
-                )
-
-        shutil.rmtree(
-            quarentena,
-            ignore_errors=True,
-        )
-
-        raise
-
-
-    print(
-        "Excluindo dados operacionais..."
-    )
-
-    try:
-
-        shutil.rmtree(
-            quarentena
-        )
-
-    except Exception:
-
-        print()
-        print(
-            "ATENCAO: publicacao global "
-            "foi concluida, mas o cleanup "
-            "local nao terminou."
-        )
-
-        print(
-            "Verifique:",
-            quarentena,
-        )
-
-        raise
-
-
-    remover_pastas_vazias()
-
-
-    restantes = (
-        listar_arquivos_operacionais()
-    )
-
-    if restantes:
-
-        raise RuntimeError(
-            "Arquivos operacionais "
-            "permaneceram apos cleanup: "
-            + ", ".join(
-                str(arquivo)
-                for arquivo in restantes
-            )
-        )
-
-
-    print(
-        "CLEANUP LOCAL: APROVADO"
-    )
-
-    print(
-        "Arquivos operacionais locais: 0"
-    )
-
-def main():
-
-    print("=" * 78)
-    print("PIPELINE SSO - EXECUCAO GLOBAL")
-    print("=" * 78)
-
-    print()
-    print("=" * 78)
-    print("PRE-FLIGHT - FRONTEIRA DO CLEANUP")
-    print("=" * 78)
-
-    validar_fronteira_cleanup()
-
-    print(
-        "Fronteira de dados locais: APROVADA"
-    )
-
-    total = len(
-        ETAPAS
-    )
-
-    try:
-
-        for numero, etapa in enumerate(
-            ETAPAS,
-            start=1,
-        ):
-
-            nome, script = etapa
-
-            executar_etapa(
-                numero,
-                total,
-                nome,
-                script,
-            )
-
-
-        print()
-        print("=" * 78)
-        print(
-            "PUBLICACAO GLOBAL VALIDADA"
-        )
-        print("=" * 78)
-
-        print(
-            "Todas as etapas anteriores "
-            "foram aprovadas."
-        )
-
-        print(
-            "Iniciando cleanup "
-            "dos dados locais."
-        )
-
-
-        limpar_dados_operacionais()
-
-
-    except Exception as erro:
-
-        print()
-        print("=" * 78)
-        print(
-            "PIPELINE SSO INTERROMPIDO"
-        )
-        print("=" * 78)
-
-        print(
-            f"Erro: {erro}"
-        )
-
-        print(
-            "Se a falha ocorreu antes "
-            "da publicacao global, "
-            "os dados locais foram "
-            "preservados."
-        )
-
+        print("\nPIPELINE SSO: TODAS AS ETAPAS CONCLUIDAS, INCLUSIVE HISTORICO")
+        print("DIRECAO CONTINUA: view dependente de historico; validacao funcional positiva ainda pendente")
+        status_final(estados)
+        return 0
+    except Exception as exc:
+        print("\nPIPELINE SSO INTERROMPIDO:", exc, file=sys.stderr)
+        print("NAO REEXECUTAR SEM RECONCILIAR PUBLICACOES INICIADAS", file=sys.stderr)
+        status_final(estados)
         return 1
 
 
-    print()
-    print("=" * 78)
-    print(
-        "PIPELINE SSO CONCLUIDO "
-        "COM SUCESSO"
-    )
-    print("=" * 78)
-
-    print(
-        "Publicacao global: APROVADA"
-    )
-
-    print(
-        "Cleanup local: APROVADO"
-    )
-
-    return 0
-
-
 if __name__ == "__main__":
-
-    sys.exit(
-        main()
-    )
+    sys.exit(main())

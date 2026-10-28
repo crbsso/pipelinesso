@@ -1,6 +1,7 @@
 ﻿from pathlib import Path
 import hashlib
 import json
+import os
 import sys
 
 import pandas as pd
@@ -45,6 +46,33 @@ def texto(valor):
 
 
 def localizar_bronze():
+
+    selecionado = os.getenv(
+        "COBLI_BRONZE_TRIPS_STOPS",
+        "",
+    ).strip()
+
+    if selecionado:
+        pasta = PASTA_BRONZE.resolve()
+        candidato = (
+            pasta / selecionado
+        ).resolve()
+
+        if candidato.parent != pasta:
+            raise RuntimeError(
+                "Bronze selecionada fora da pasta permitida."
+            )
+
+        if not (
+            candidato.name.startswith("cobli_trips_stops_")
+            and candidato.suffix == ".json"
+            and candidato.is_file()
+        ):
+            raise RuntimeError(
+                "Bronze selecionada invalida ou inexistente."
+            )
+
+        return candidato
 
     arquivos = sorted(
         PASTA_BRONZE.glob(
@@ -152,6 +180,13 @@ def numero(valor):
         return None
 
 
+try:
+    from backend.motoristas.normalizar_tempo_cobli import horario_viagem_utc
+except ModuleNotFoundError as erro:
+    if erro.name not in ("backend", "backend.motoristas"):
+        raise
+    from normalizar_tempo_cobli import horario_viagem_utc
+
 def tratar():
 
     print("=" * 72)
@@ -201,10 +236,7 @@ def tratar():
 
     resultados = []
 
-    for registro, evento_id in zip(
-        eventos,
-        hashes,
-    ):
+    for registro in eventos:
 
         driver = registro.get(
             "driver"
@@ -354,6 +386,62 @@ def tratar():
 
             tipo_evento = "PARADA"
 
+        start_location = registro.get(
+            "start_location"
+        )
+
+        if not isinstance(
+            start_location,
+            dict,
+        ):
+            start_location = {}
+
+
+        end_location = registro.get(
+            "end_location"
+        )
+
+        if not isinstance(
+            end_location,
+            dict,
+        ):
+            end_location = {}
+
+
+        inicio = texto(
+            registro.get(
+                "start_time"
+            )
+        )
+
+        fim = texto(
+            registro.get(
+                "end_time"
+            )
+        )
+
+        if not inicio and not fim:
+            raise RuntimeError(
+                "Evento sem start_time e end_time."
+            )
+
+        evento_id = hash_evento(
+            {
+                "vehicle_id_cobli":
+                    vehicle_id,
+
+                "inicio":
+                    inicio,
+
+                "fim":
+                    fim,
+
+                "tipo_evento":
+                    tipo_evento,
+            }
+        )
+
+
         resultados.append(
             {
                 "evento_id":
@@ -422,19 +510,39 @@ def tratar():
                         )
                     ),
 
-                "inicio":
-                    texto(
-                        registro.get(
-                            "start_time"
+                "latitude_inicio":
+                    numero(
+                        start_location.get(
+                            "lat"
                         )
                     ),
 
-                "fim":
-                    texto(
-                        registro.get(
-                            "end_time"
+                "longitude_inicio":
+                    numero(
+                        start_location.get(
+                            "lng"
                         )
                     ),
+
+                "latitude_fim":
+                    numero(
+                        end_location.get(
+                            "lat"
+                        )
+                    ),
+
+                "longitude_fim":
+                    numero(
+                        end_location.get(
+                            "lng"
+                        )
+                    ),
+
+                "inicio":
+                    inicio,
+
+                "fim":
+                    fim,
 
                 "distancia_km":
                     distancia,
@@ -492,28 +600,21 @@ def tratar():
     # DATA AUXILIAR
     # ---------------------------------------------------------
 
-    data_base = pd.to_datetime(
-        df["inicio"],
-        errors="coerce",
-        utc=True,
+    # Datas sem offset sao horarios locais da operacao.
+    referencias = df["inicio"].where(
+        df["inicio"].ne(""), df["fim"]
     )
 
-    sem_inicio = data_base.isna()
+    data_base = pd.to_datetime(
+        referencias.map(horario_viagem_utc),
+        errors="coerce",
+        utc=True,
+    ).dt.tz_convert("America/Sao_Paulo")
 
-    if sem_inicio.any():
-
-        data_fim = pd.to_datetime(
-            df.loc[
-                sem_inicio,
-                "fim",
-            ],
-            errors="coerce",
-            utc=True,
+    if data_base.isna().any():
+        raise RuntimeError(
+            "Datas invalidas nas viagens/paradas Cobli"
         )
-
-        data_base.loc[
-            sem_inicio
-        ] = data_fim
 
     df["data_evento"] = (
         data_base
