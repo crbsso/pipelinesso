@@ -133,7 +133,8 @@ export default function GestaoPermissoes() {
         <EditorPerfil key={editor === "novo" ? "novo" : editor.id} inicial={editor === "novo" ? undefined : editor} cancelar={() => setEditor(null)}
           concluir={() => concluir("Perfil salvo e auditado.")} />)}
     </div>
-    <section className={painel}><h2 className="text-lg font-semibold">Histórico de alterações</h2>
+    <details className={painel}>
+      <summary className="cursor-pointer text-lg font-semibold">Histórico de alterações</summary>
       <p className="mt-2 text-sm text-gray-500">O histórico é preservado. Use Editar perfil atual para alterar o cadastro existente.</p>
       {auditoria.carregando ? <p role="status" className="mt-4">Carregando histórico...</p> : <ul className="mt-4 divide-y divide-gray-200">
         {auditoria.dados?.dados.map(a => <li key={a.id} className="py-3 text-sm">
@@ -145,6 +146,6 @@ export default function GestaoPermissoes() {
           </details>
         </li>)}</ul>}
       <Paginacao pagina={paginaAudit} total={auditoria.dados?.total ?? 0} alterar={setPaginaAudit} />
-    </section>
+    </details>
   </div>;
 }
