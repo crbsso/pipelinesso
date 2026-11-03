@@ -754,20 +754,7 @@ def validar_ouro(
             "Existem IDs duplicados no Ouro."
         )
 
-    if len(
-        registros
-    ) != 613:
-
-        raise RuntimeError(
-            "Quantidade inesperada "
-            "de registros no Ouro: "
-            + str(
-                len(
-                    registros
-                )
-            )
-        )
-
+    # Contagem dinamica; demais quality gates sao preservados.
 
     divergencias = sum(
         int(

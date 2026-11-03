@@ -128,7 +128,9 @@ def verificar_prata():
 def gerar_ouro_avcb():
 
     if not verificar_prata():
-        return
+        raise RuntimeError(
+            "Prata AVCB ausente; Ouro nao atualizada."
+        )
 
     print(
         "Lendo camada Prata do AVCB..."

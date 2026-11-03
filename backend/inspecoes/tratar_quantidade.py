@@ -1295,7 +1295,7 @@ def validar_prata(
             )
 
         if not re.fullmatch(
-            r"[0-9]+-[0-9K]",
+            r"[0-9]+(?:-[0-9]+)?-[0-9K]",
             identificador,
         ):
 

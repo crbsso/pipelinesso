@@ -1,4 +1,5 @@
-from datetime import datetime, timedelta
+import argparse
+from datetime import date, datetime, time, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
 import os
@@ -15,6 +16,7 @@ DIAS_JANELA = 7
 def executar(
     script,
     env,
+    argumentos=None,
 ):
 
     caminho = (
@@ -36,6 +38,7 @@ def executar(
         [
             sys.executable,
             str(caminho),
+            *(argumentos or []),
         ],
         cwd=str(ROOT),
         env=env,
@@ -51,20 +54,59 @@ def executar(
 
 def main():
 
-    tz = ZoneInfo(
-        TIMEZONE
+    parser = argparse.ArgumentParser(
+        description="Extracoes sincronizadas da Cobli."
     )
 
-    fim = datetime.now(
-        tz
-    )
+    parser.add_argument("--inicio")
+    parser.add_argument("--fim")
 
-    inicio = (
-        fim
-        - timedelta(
-            days=DIAS_JANELA
+    args = parser.parse_args()
+
+    if bool(args.inicio) != bool(args.fim):
+        raise RuntimeError(
+            "Informe --inicio e --fim conjuntamente."
         )
+
+    tz = ZoneInfo(TIMEZONE)
+
+    hoje = datetime.now(tz).replace(
+        hour=0,
+        minute=0,
+        second=0,
+        microsecond=0,
     )
+
+    if args.inicio:
+        data_inicio = date.fromisoformat(args.inicio)
+        data_fim = date.fromisoformat(args.fim)
+
+        inicio = datetime.combine(
+            data_inicio,
+            time.min,
+            tzinfo=tz,
+        )
+
+        fim = datetime.combine(
+            data_fim,
+            time.min,
+            tzinfo=tz,
+        )
+    else:
+        fim = hoje
+        inicio = fim - timedelta(days=DIAS_JANELA)
+
+    dias = (fim.date() - inicio.date()).days
+
+    if not 1 <= dias <= DIAS_JANELA:
+        raise RuntimeError(
+            "A janela deve ter entre 1 e 7 dias."
+        )
+
+    if fim > hoje:
+        raise RuntimeError(
+            "A janela nao pode incluir o dia em andamento."
+        )
 
     inicio_iso = inicio.isoformat()
     fim_iso = fim.isoformat()
@@ -107,6 +149,10 @@ def main():
         "extrair_cobli_safety_driver.py",
         env,
     )
+
+    # Eventos individuais de Velocidade nao entram no fluxo normal.
+    # As extracoes de Viagens e Safety Driver continuam obrigatorias.
+    print("Velocidade individual: NAO EXTRAIDA (em validacao).")
 
     print()
     print("=" * 80)

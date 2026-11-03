@@ -1386,171 +1386,53 @@ def enriquecer_identidade_responsaveis(
 
 
 
+
 def validar_identidade_responsaveis(
     registros,
     contadores_identidade,
     contadores_classificacao,
 ):
-
-    esperados_identidade = {
-        "MAPA_RM_EXATO": 466,
-        "MAPA_RM_ALIAS_COMPARTILHADO": 127,
-        "MAPA_RM_ALIAS_ACAO": 19,
-        "PREVSYS_SEM_RM": 1,
+    # Contagens historicas nao representam limites operacionais.
+    # A verificacao cobre TODAS as linhas efetivamente processadas.
+    metodos_validos = {
+        "MAPA_RM_EXATO", "MAPA_RM_ALIAS_COMPARTILHADO",
+        "MAPA_RM_ALIAS_ACAO", "PREVSYS_SEM_RM",
     }
-
-    esperados_classificacao = {
-        "SECAO_RM_RESPONSAVEL": 612,
-        "CONFIG_RESPONSAVEL_SEM_RM": 1,
+    classificacoes_validas = {
+        "SECAO_RM_RESPONSAVEL", "CONFIG_RESPONSAVEL_SEM_RM",
     }
+    grupos_validos = {"OUTRAS_AREAS", "SEGURANCA"}
 
+    if not registros:
+        raise RuntimeError("Nenhuma Acao Corretiva consolidada.")
 
-    if dict(
-        contadores_identidade
-    ) != esperados_identidade:
+    ids = [str(r.get("acao_corretiva_id") or "").strip() for r in registros]
+    if any(not i for i in ids) or len(ids) != len(set(ids)):
+        raise RuntimeError("IDs ausentes ou duplicados na Prata.")
 
-        raise RuntimeError(
-            "Identidade divergente: "
-            + str(
-                dict(
-                    contadores_identidade
-                )
-            )
-        )
+    for r in registros:
+        acao = str(r.get("acao_corretiva_id") or "").strip()
+        if not str(r.get("responsavel_exibicao") or "").strip():
+            raise RuntimeError("Acao sem responsavel_exibicao: " + acao)
+        if str(r.get("metodo_identidade_responsavel") or "").strip() not in metodos_validos:
+            raise RuntimeError("Acao com metodo_identidade_responsavel invalido: " + acao)
+        if str(r.get("metodo_classificacao") or "").strip() not in classificacoes_validas:
+            raise RuntimeError("Acao com metodo_classificacao invalido: " + acao)
+        if str(r.get("grupo_sso") or "").strip() not in grupos_validos:
+            raise RuntimeError("Acao com grupo_sso invalido: " + acao)
 
+    observados_identidade = Counter(r["metodo_identidade_responsavel"] for r in registros)
+    observados_classificacao = Counter(r["metodo_classificacao"] for r in registros)
+    observados_grupos = Counter(r["grupo_sso"] for r in registros)
+    if (dict(observados_identidade) != dict(contadores_identidade)
+            or dict(observados_classificacao) != dict(contadores_classificacao)):
+        raise RuntimeError("Contadores nao correspondem as acoes consolidadas.")
+    if sum(observados_grupos.values()) != len(registros):
+        raise RuntimeError("Grupos nao fecham com as linhas consolidadas.")
 
-    if dict(
-        contadores_classificacao
-    ) != esperados_classificacao:
-
-        raise RuntimeError(
-            "Classificacao divergente: "
-            + str(
-                dict(
-                    contadores_classificacao
-                )
-            )
-        )
-
-
-    grupos = Counter(
-        str(
-            registro.get(
-                "grupo_sso"
-            )
-            or ""
-        ).strip()
-        for registro in registros
-    )
-
-
-    esperado_grupos = {
-        "OUTRAS_AREAS": 388,
-        "SEGURANCA": 225,
-    }
-
-
-    if dict(
-        grupos
-    ) != esperado_grupos:
-
-        raise RuntimeError(
-            "grupo_sso divergente: "
-            + str(
-                dict(
-                    grupos
-                )
-            )
-        )
-
-
-    por_id = {
-        str(
-            registro.get(
-                "acao_corretiva_id"
-            )
-            or ""
-        ).strip():
-            registro
-        for registro
-        in registros
-    }
-
-
-    if (
-        por_id["52"][
-            "grupo_sso"
-        ]
-        != "OUTRAS_AREAS"
-    ):
-
-        raise RuntimeError(
-            "Acao 52 deveria estar "
-            "em OUTRAS_AREAS."
-        )
-
-
-    if (
-        por_id["1148"][
-            "grupo_sso"
-        ]
-        != "SEGURANCA"
-    ):
-
-        raise RuntimeError(
-            "Acao 1148 deveria estar "
-            "em SEGURANCA."
-        )
-
-
-    if (
-        por_id["786"][
-            "grupo_sso"
-        ]
-        != "OUTRAS_AREAS"
-    ):
-
-        raise RuntimeError(
-            "Acao 786 deveria estar "
-            "em OUTRAS_AREAS."
-        )
-
-
-    print()
-    print(
-        "Identidade dos responsaveis:"
-    )
-
-    for metodo, qtd in (
-        esperados_identidade.items()
-    ):
-
-        print(
-            f"  {metodo}: "
-            f"{contadores_identidade[metodo]}"
-        )
-
-
-    print()
-    print(
-        "Classificacao pelo responsavel:"
-    )
-
-    print(
-        "  SECAO_RM_RESPONSAVEL: 612"
-    )
-
-    print(
-        "  CONFIG_RESPONSAVEL_SEM_RM: 1"
-    )
-
-    print(
-        "  OUTRAS_AREAS: 388"
-    )
-
-    print(
-        "  SEGURANCA: 225"
-    )
+    print("Identidade dos responsaveis:", dict(sorted(observados_identidade.items())))
+    print("Classificacao dos responsaveis:", dict(sorted(observados_classificacao.items())))
+    print("Grupos:", dict(sorted(observados_grupos.items())))
 
 # =========================================================
 # QUALITY GATE

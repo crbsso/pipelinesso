@@ -164,114 +164,46 @@ def obter_contextos(page):
 # =========================================================
 
 def abrir_acoes_corretivas(page):
+    """Seleciona a aba INTERNA de Acoes no dashboard de Plano de Acao.
 
-    print(
-        "Procurando aba "
-        "'Acoes corretivas'..."
-    )
-
-    padrao = re.compile(
-        r"^\s*A..es\s+corretivas\s*$",
-        re.IGNORECASE,
-    )
-
-    limite = (
-        time.time()
-        + 90
-    )
-
-    while time.time() < limite:
-
-        for (
-            nome_contexto,
-            contexto,
-        ) in obter_contextos(page):
-
+    Ignora cards e menu lateral; navega nos frames do QuickSight.
+    O visual 'Detalhes das acoes corretivas' continua obrigatorio
+    para exportacao, validado por abrir_menu_acoes_corretivas().
+    """
+    print("Procurando ABA INTERNA 'Acoes corretivas'...")
+    padrao = re.compile(r"^\s*A[cç][oõ]es\s+corretivas\s*$", re.IGNORECASE)
+    prazo = time.monotonic() + 75
+    while time.monotonic() < prazo:
+        # Primeiro os iframes QuickSight, depois o documento principal,
+        # porque ambas as formas aparecem em versoes do portal.
+        contextos = [f for f in page.frames if f is not page.main_frame]
+        contextos.append(page.main_frame)
+        for contexto in contextos:
             try:
-
-                candidatos = (
-                    contexto.get_by_text(
-                        padrao
-                    )
+                grupos = (
+                    contexto.get_by_role("tab", name=padrao),
+                    contexto.get_by_text(padrao),
                 )
-
-                for indice in range(
-                    candidatos.count()
-                ):
-
-                    candidato = (
-                        candidatos.nth(
-                            indice
-                        )
-                    )
-
-                    try:
-
-                        if not candidato.is_visible():
+                for candidatos in grupos:
+                    for indice in range(candidatos.count()):
+                        candidato = candidatos.nth(indice)
+                        try:
+                            if not candidato.is_visible():
+                                continue
+                            candidato.scroll_into_view_if_needed(timeout=10000)
+                            candidato.click(timeout=15000)
+                            print("Aba interna 'Acoes corretivas' acionada.")
+                            return
+                        except Exception:
                             continue
-
-                    except Exception:
-                        continue
-
-                    try:
-
-                        candidato.scroll_into_view_if_needed(
-                            timeout=10000,
-                        )
-
-                    except Exception:
-                        pass
-
-                    print(
-                        "Aba 'Acoes corretivas' "
-                        "encontrada."
-                    )
-
-                    print(
-                        "Contexto:",
-                        nome_contexto,
-                    )
-
-                    try:
-
-                        candidato.click(
-                            timeout=15000,
-                        )
-
-                    except Exception:
-
-                        candidato.evaluate(
-                            "(el) => el.click()"
-                        )
-
-                    print(
-                        "Aba 'Acoes corretivas' "
-                        "acionada."
-                    )
-
-                    time.sleep(
-                        6
-                    )
-
-                    return
-
             except Exception:
                 continue
-
-        time.sleep(
-            1
-        )
-
+        page.wait_for_timeout(750)
     raise RuntimeError(
-        "A aba 'Acoes corretivas' "
-        "nao foi localizada no dashboard "
-        "Analise Plano de Acao."
+        "A aba interna 'Acoes corretivas' nao foi localizada "
+        "na Analise Plano de Acao. Nenhuma exportacao autorizada."
     )
 
-
-# =========================================================
-# VISUAL DETALHES DAS ACOES CORRETIVAS
-# =========================================================
 
 def abrir_menu_acoes_corretivas(page):
 
@@ -300,11 +232,16 @@ def abrir_menu_acoes_corretivas(page):
             erro
         )
 
-        if (
-            "botao dos tres pontos nao apareceu"
-            not in mensagem
-        ):
-
+        # O motor generico pode nao localizar o container
+        # dinamico do QuickSight; nesse caso usa a busca
+        # especifica de Acoes Corretivas, ja existente.
+        falhas_recuperaveis = (
+            "botao dos tres pontos nao apareceu",
+            "Nao foi possivel recuperar o container de hover do visual",
+            "Nao foi possivel aplicar hover no container",
+            "O visual nao foi localizado",
+        )
+        if not any(termo in mensagem for termo in falhas_recuperaveis):
             raise
 
         print()
@@ -999,7 +936,7 @@ def extrair_acoes_corretivas():
                 else context.new_page()
             )
 
-            planos.garantir_login(
+            page = planos.garantir_login(
                 page
             )
 

@@ -135,7 +135,9 @@ def limpar_texto(serie):
 def tratar_avcb():
 
     if not bronze_aprovada():
-        return
+        raise RuntimeError(
+            "Bronze AVCB reprovada; Prata nao atualizada."
+        )
 
     print()
     print("Lendo camada Bronze...")
