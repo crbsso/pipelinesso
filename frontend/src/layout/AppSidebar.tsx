@@ -9,7 +9,7 @@ import React, {
 
 import Image from "next/image";
 import Link from "next/link";
-import { rotaPermitida, type AbasPermitidas } from "@/lib/auth/acessoAbas";
+import { rotaEmPreparacao, rotaPermitida, type AbasPermitidas } from "@/lib/auth/acessoAbas";
 import { usePathname } from "next/navigation";
 import { useSidebar } from "../context/SidebarContext";
 
@@ -287,6 +287,10 @@ const AppSidebar: React.FC = () => {
                 <ul className="ml-9 mt-2 space-y-1">
                   {nav.subItems.map((subItem) => (
                     <li key={subItem.name}>
+                      {rotaEmPreparacao(subItem.path) ?
+                        <span aria-disabled="true" className="menu-dropdown-item flex flex-wrap items-center gap-1 text-gray-500 dark:text-gray-400">
+                          {subItem.name}<span className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] dark:bg-gray-800">Em preparação</span>
+                        </span> :
                       <Link
                         href={subItem.path}
                         className={`menu-dropdown-item ${
@@ -296,7 +300,7 @@ const AppSidebar: React.FC = () => {
                         }`}
                       >
                         {subItem.name}
-                      </Link>
+                      </Link>}
                     </li>
                   ))}
                 </ul>

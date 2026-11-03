@@ -2,7 +2,7 @@ import { requirePermission } from "../auth/requirePermission.ts";
 import type { ClienteContextoAcesso } from "../auth/carregarContextoAcesso.ts";
 export type ModuloGestao = "usuarios" | "permissoes" | "solicitacoes_acesso";
 export type OperacaoGestao = "listar_usuarios" | "salvar_usuario" | "listar_perfis" | "catalogo_perfis"
-  | "salvar_perfil" | "listar_atribuicoes" | "salvar_atribuicao" | "estado_atribuicao"
+  | "obter_perfil" | "excluir_perfil" | "salvar_perfil" | "listar_atribuicoes" | "salvar_atribuicao" | "estado_atribuicao"
   | "listar_solicitacoes" | "analisar_solicitacao" | "listar_auditoria";
 export interface ClienteGestao extends ClienteContextoAcesso {
   rpc(nome: "obter_contexto_acesso_portal"): PromiseLike<{ data: unknown; error: unknown ;}>;
@@ -76,7 +76,7 @@ export async function executarGestao(request: Request, rota: {
 }, criarCliente: () => Promise<ClienteGestao>, origemDoServidor?: string): Promise<Response> {
   try {
     if (rota.escrita) {
-      if (!["POST", "PATCH"].includes(request.method)) return jsonGestao({ error: "Método inválido." }, 405);
+      if (!["POST", "PATCH", "DELETE"].includes(request.method)) return jsonGestao({ error: "Método inválido." }, 405);
       const destino = origemAlvo(request, origemDoServidor);
       const origem = request.headers.get("origin");
       const site = request.headers.get("sec-fetch-site");

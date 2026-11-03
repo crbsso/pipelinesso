@@ -95,3 +95,17 @@ test("configuracao invalida de origem falha fechada antes de acessar sessao",asy
   assert.equal(r.status,503);assert.equal(chamadas,0);
  }
 });
+
+test("excluir perfil exige mesma origem e gestao; conflito de vinculos chega ao usuario",async()=>{
+ const config={modulo:"permissoes",operacao:"excluir_perfil",escrita:true,fixos:{id:"perfil"}};
+ const a=ambiente();
+ const r=await executarGestao(request({versao:"v1"},{},"DELETE"),config,a.criar);
+ assert.equal(r.status,200);
+ assert.deepEqual(a.estado.operacoes[0],{p_operacao:"excluir_perfil",p_dados:{id:"perfil",versao:"v1"}});
+ assert.equal((await executarGestao(request({versao:"v1"},{Origin:"https://outro.test"},"DELETE"),config,a.criar)).status,403);
+ assert.equal((await executarGestao(request({versao:"v1"},{},"DELETE"),config,ambiente(["usuarios"]).criar)).status,403);
+ a.estado.erro={code:"PT409",message:"Atribua outro perfil aos usuários antes de excluir."};
+ const conflito=await executarGestao(request({versao:"v1"},{},"DELETE"),config,a.criar);
+ assert.equal(conflito.status,409);assert.match((await conflito.json()).error,/Atribua outro perfil/);
+ assert.equal((await executarGestao(request({id:"outro",versao:"v1"},{},"DELETE"),config,a.criar)).status,400);
+});

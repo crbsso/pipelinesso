@@ -54,6 +54,7 @@ test("gestao integrada: privilegios, concorrencia otimista, escopos, auditoria e
   await db.query("select set_config('request.jwt.claim.sub',$1,false)",[A]);
   const contextoAnterior=(await db.query('select public.obter_contexto_acesso_portal() as valor')).rows[0].valor;
   await db.exec(await migration("_herdar_permissoes_do_perfil.sql"));
+  await db.exec(await migration("_gerir_exclusao_perfis.sql"));
   assert.deepEqual((await db.query('select public.obter_contexto_acesso_portal() as valor')).rows[0].valor,contextoAnterior);
   assert.equal((await db.query('select herdar_perfil from portal_acesso.atribuicoes where id=$1',[X])).rows[0].herdar_perfil,true);
   await db.query("select set_config('request.jwt.claim.sub','',false)");
@@ -215,6 +216,70 @@ test("gestao integrada: privilegios, concorrencia otimista, escopos, auditoria e
    await rejeita(como(C,'estado_atribuicao',{id:atual.id,ativo:false,versao:atual.versao}),'PT409');
    u=await usuario(A,C);await como(C,'salvar_usuario',{id:A,ativo:true,versao:u.versao});
    await como(A,'estado_atribuicao',{id:atual.id,ativo:false,versao:atual.versao});
+  });
+  await t.test("perfil aceita as 19 abas e rejeita capacidade desconhecida",async()=>{
+   const {MODULOS_CONSULTA,abasDoContexto,ABAS_POR_ROTA,rotaPermitida}=await import("../src/lib/auth/acessoAbas.ts");
+   const capacidades=[...MODULOS_CONSULTA.map(modulo=>({modulo,acao:"consultar"})),...["usuarios","permissoes","solicitacoes_acesso"].map(modulo=>({modulo,acao:"gerenciar"}))];
+   const p=(await como(A,"salvar_perfil",{codigo:"todas_abas",nome:"Todas as abas",ativo:true,capacidades})).perfil;
+   assert.equal(p.capacidades.length,19);
+   await como(A,"salvar_atribuicao",{usuarioId:B,perfilId:p.id,ativo:true,inicio:null,fim:null,herdarPerfil:true});
+   await db.query("select set_config('request.jwt.claim.sub',$1,false)",[B]);
+   const abas=abasDoContexto((await db.query("select public.obter_contexto_acesso_portal() as valor")).rows[0].valor);
+   await db.query("select set_config('request.jwt.claim.sub','',false)");
+   for(const rota of Object.keys(ABAS_POR_ROTA))assert.equal(rotaPermitida(rota,abas),true,rota);
+   await rejeita(como(A,"salvar_perfil",{codigo:"aba_invalida",nome:"Inválido",ativo:true,capacidades:[{modulo:"inexistente",acao:"consultar"}]}),"PT400");
+   const a=(await atribuicoes(B)).find(a=>a.perfil_id===p.id);
+   await como(A,"estado_atribuicao",{id:a.id,versao:a.versao,ativo:false});
+  });
+  await t.test("exclusao exige perfil vazio; transferencia preserva vinculos e historico",async()=>{
+   const criar=async(codigo,nome)=>(await como(A,"salvar_perfil",{codigo,nome,ativo:true,capacidades:[{modulo:"avcb",acao:"consultar"}]})).perfil;
+   let origem=await criar("excluir_origem","Origem"),destino=await criar("excluir_destino","Destino");
+   const obter=async id=>(await como(A,"obter_perfil",{id})).perfil;
+   const antes=await auditorias();
+   await rejeita(como(B,"excluir_perfil",{id:origem.id,versao:origem.versao}),"42501");
+   await rejeita(como(null,"obter_perfil",{id:origem.id}),"42501");
+   await rejeita(como(A,"excluir_perfil",{id:origem.id,versao:"antiga"}),"PT409");
+   assert.equal(await auditorias(),antes);
+   const vinculos=[];
+   for(const usuarioId of [B,D]) {
+    const a=(await como(A,"salvar_atribuicao",{usuarioId,perfilId:origem.id,ativo:usuarioId===B,
+     inicio:null,fim:usuarioId===D?"2020-01-01T00:00:00.000Z":null,herdarPerfil:true})).atribuicao;
+    vinculos.push(a);
+   }
+   assert.equal((await obter(origem.id)).usuarios_vinculados,2);
+   await assert.rejects(como(A,"excluir_perfil",{id:origem.id,versao:origem.versao}),e=>e.code==="PT409"&&/Atribua outro perfil/.test(e.message));
+   async function transferir(a,perfilId=destino.id) {
+    return como(A,"salvar_atribuicao",{id:a.id,versao:a.versao,usuarioId:a.user_id,perfilId,ativo:a.ativo,
+     inicio:a.inicio?new Date(a.inicio).toISOString():null,fim:a.fim?new Date(a.fim).toISOString():null,herdarPerfil:true});
+   }
+   const movido=(await transferir(vinculos[0])).atribuicao;
+   assert.equal(movido.id,vinculos[0].id);assert.equal(movido.perfil_id,destino.id);assert.deepEqual(movido.abrangencias,[]);
+   await rejeita(transferir(vinculos[0]),"PT409");
+   origem=await obter(origem.id);
+   assert.equal(origem.usuarios_vinculados,1);
+   await rejeita(como(A,"excluir_perfil",{id:origem.id,versao:origem.versao}),"PT409");
+   const movidoD=(await transferir(vinculos[1])).atribuicao;
+   assert.equal(movidoD.ativo,false);assert.equal(movidoD.fim,vinculos[1].fim);
+   const antigo=(await atribuicoes(B)).find(a=>a.id===atribuicao.id);
+   await rejeita(transferir(antigo),"PT409"); // usuário já possui o perfil de destino
+   const legado=(await transferir(antigo,origem.id)).atribuicao;
+   assert.equal(legado.herdar_perfil,true);assert.deepEqual(legado.abrangencias,[]);
+   const terceira=await criar("excluir_terceira","Terceira");
+   await transferir(legado,terceira.id);
+   origem=await obter(origem.id);assert.equal(origem.usuarios_vinculados,0);
+   const historicoAntes=(await db.query("select id,antes,depois from portal_acesso.auditoria where entidade='portal_acesso.perfis' and depois->>'id'=$1",[origem.id])).rows;
+   await como(A,"excluir_perfil",{id:origem.id,versao:origem.versao});
+   await rejeita(como(A,"obter_perfil",{id:origem.id}),"PT404");
+   await rejeita(como(A,"excluir_perfil",{id:origem.id,versao:origem.versao}),"PT404");
+   assert.deepEqual((await db.query("select id,antes,depois from portal_acesso.auditoria where entidade='portal_acesso.perfis' and depois->>'id'=$1",[origem.id])).rows,historicoAntes);
+   const removido=(await db.query("select autor_id,antes from portal_acesso.auditoria where entidade='portal_acesso.perfis' and operacao='DELETE' and antes->>'id'=$1",[origem.id])).rows[0];
+   assert.equal(removido.autor_id,A);assert.equal(removido.antes.nome,"Origem");
+   const historico=(await como(A,"listar_auditoria",{limite:100})).dados;
+   assert.equal(historico.some(a=>a.perfil_atual_id===origem.id),false);
+   assert.ok(historico.some(a=>a.perfil_atual_id===destino.id));
+   const admin=(await atribuicoes(A)).find(a=>a.perfil_id===P);
+   await rejeita(transferir(admin,terceira.id),"PT409");
+   assert.equal((await atribuicoes(A)).find(a=>a.id===admin.id).perfil_id,P);
   });
   await t.test("trava tambem cobre escrita direta, sem expor tabelas aos clientes",async()=>{
    await db.exec("begin");

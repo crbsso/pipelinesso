@@ -53,10 +53,14 @@ test("edicao restrita preserva coligada e secao como pares separados",()=>{
  assert.ok(html.indexOf('value="10"')<html.indexOf('value="2"'));
 });
 test("nova concessao exige escolha de perfil e vencimento ou opcao permanente explicita",()=>{
- const Editor=componente("EditorConcessao",{"/api/gestao/catalogo-perfis?limite=100&busca=":{dados:[],total:0}});
+ const Editor=componente("EditorConcessao",{"/api/gestao/catalogo-perfis?limite=100&busca=":{dados:[{id:"p1",nome:"Administração de acessos",descricao:"Gerencia usuários e perfis do portal.",ativo:true},{id:"p2",nome:"Equipe técnica",descricao:"Consultas da equipe de segurança.",ativo:true}],total:2}});
  const html=renderToStaticMarkup(React.createElement(Editor,{usuario:{usuario_id:"pessoa_teste",email:"pessoa@exemplo.test"},
   concluir(){},cancelar(){}}));
- assert.match(html,/<option value="" selected="">Selecione um perfil/);
+ assert.match(html,/Selecione o perfil/);
+ assert.match(html,/Administração de acessos/);assert.match(html,/Gerencia usuários e perfis do portal\./);
+ assert.match(html,/Equipe técnica/);assert.match(html,/Consultas da equipe de segurança\./);
+ assert.equal((html.match(/type="radio"/g)??[]).length,2);
+ assert.doesNotMatch(html,/<select|type="radio"[^>]*checked/);
  assert.match(html,/type="datetime-local"[^>]*required=""/);
  assert.doesNotMatch(html,/<input type="checkbox" checked=""\/>Sem vencimento/);
  assert.match(html,/As abas permitidas são definidas no perfil/);
@@ -98,7 +102,8 @@ test("vinculo de perfil nao oferece selecao de abas por usuario",()=>{
  const perfil={id:'perfil_teste',codigo:'teste',nome:'Perfil de consulta',ativo:true,capacidades:[{modulo:'avcb',acao:'consultar',ativo:true}],versao:'p1'};
  const Editor=componente('EditorConcessao');
  const html=renderToStaticMarkup(React.createElement(Editor,{usuario:{usuario_id:'pessoa',email:'pessoa@exemplo.test'},inicial:{id:'vinculo',perfil_id:perfil.id,perfil,herdar_perfil:true,ativo:true,inicio:null,fim:null,versao:'v1'},concluir(){},cancelar(){}}));
- assert.equal((html.match(/<select/g)??[]).length,1);
+ assert.equal((html.match(/type="radio"/g)??[]).length,1);
+ assert.doesNotMatch(html,/<select/);
  assert.match(html,/Perfil de consulta/);assert.match(html,/Salvar vínculo/);
  assert.doesNotMatch(html,/abrangencia-|Sem concessão|Conferência antes de salvar|<option value="corporativa"/);
 });
