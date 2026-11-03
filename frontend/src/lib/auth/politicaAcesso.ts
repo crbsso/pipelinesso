@@ -4,6 +4,14 @@
  * Este modulo nao autentica usuarios, consulta o banco ou libera rotas.
  */
 const RECURSOS = {
+  visao_geral: { nome: "Visão Geral", acoes: ["consultar"], dimensoes: [] },
+  extintores: { nome: "Extintores", acoes: ["consultar"], dimensoes: [] },
+  ensaios: { nome: "Ensaios", acoes: ["consultar"], dimensoes: [] },
+  outros_indicadores: { nome: "Outros Indicadores", acoes: ["consultar"], dimensoes: [] },
+  rota_segura: { nome: "Rota Segura", acoes: ["consultar"], dimensoes: [] },
+  regras_que_salvam_vidas: { nome: "Regras que Salvam Vidas", acoes: ["consultar"], dimensoes: [] },
+  sipat: { nome: "SIPAT", acoes: ["consultar"], dimensoes: [] },
+  outros_programas: { nome: "Outros Programas", acoes: ["consultar"], dimensoes: [] },
   avcb: {
     nome: "AVCB",
     acoes: ["consultar"],
