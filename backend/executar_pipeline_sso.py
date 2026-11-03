@@ -63,7 +63,7 @@ ETAPAS = [
 # Hash dos dois scripts de isolamento de Velocidade ja instalados na Etapa 2D.
 # Evita que uma copia antiga seja executada acidentalmente pelo BAT.
 HASHES_ISOLAMENTO = {
-    "backend/publicar_pipeline_sso.py": "86250a800f4177beee2233ccbfdb9125151181dad39f8747134647b8fec9bebc",
+    "backend/publicar_pipeline_sso.py": "7734d117d517f1f0dbea56b36e7e42a5054a870fdfffe7f6070a79401c698a7a",
     "backend/motoristas/executar_extracoes_cobli_sincronizadas.py": "2a73e4fa5301043d8f673d92bcb6399395cf454b89b494a1d01c5a600e386439",
 }
 
@@ -152,12 +152,15 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Orquestracao Portal SSO - RM, Cobli, Prevsys e AVCB")
     parser.add_argument("--plano", action="store_true", help="Somente mostrar etapas")
     parser.add_argument("--verificar", action="store_true", help="Checagem estatica sem rede ou execucao")
+    parser.add_argument("--teste-hml", action="store_true", help="Etapas 1-23 sem publicacoes ou PROD")
     parser.add_argument(
         "--retomar-14a23",
         action="store_true",
         help="Executar somente etapas 14 a 23, sem publicacoes",
     )
     args = parser.parse_args()
+    if args.teste_hml and (args.plano or args.verificar or args.retomar_14a23):
+        parser.error("--teste-hml nao pode ser combinado com outros modos")
     if args.plano:
         listar_plano()
         return 0
@@ -198,6 +201,36 @@ def main() -> int:
                 "PUBLICACOES 24-26 BLOQUEADAS",
                 flush=True,
             )
+        elif args.teste_hml:
+            from dotenv import dotenv_values
+
+            valores = dotenv_values(RAIZ / ".env")
+            ref_hml = "ckfsarzmudwdehiiltwi"
+            url_hml = f"https://{ref_hml}.supabase.co"
+
+            url_efetiva = os.environ.get(
+                "SUPABASE_URL", valores.get("SUPABASE_URL")
+            )
+            ref_efetiva = os.environ.get(
+                "SSO_SUPABASE_PROJECT_REF",
+                valores.get("SSO_SUPABASE_PROJECT_REF"),
+            )
+
+            if url_efetiva != url_hml or ref_efetiva != ref_hml:
+                raise RuntimeError(
+                    "TESTE HML BLOQUEADO: URL ou project ref divergente."
+                )
+
+            if os.environ.get("SSO_HML_URL") not in (None, url_hml):
+                raise RuntimeError(
+                    "TESTE HML BLOQUEADO: SSO_HML_URL divergente."
+                )
+
+            print(
+                "TESTE OPERACIONAL HML: etapas 1-23, "
+                "publicacoes bloqueadas.",
+                flush=True,
+            )
         else:
             # Modo normal: preserva o preflight de producao.
             preflight_remoto()
@@ -216,6 +249,8 @@ def main() -> int:
     try:
         for indice, (nome, script) in enumerate(ETAPAS, 1):
             if args.retomar_14a23 and not (14 <= indice <= 23):
+                continue
+            if args.teste_hml and indice > 23:
                 continue
 
             argumentos = []
@@ -245,6 +280,18 @@ def main() -> int:
                 if mtime_acao_anterior is not None and bronze_acoes.stat().st_mtime_ns == mtime_acao_anterior:
                     raise RuntimeError("Bronze de Acoes Corretivas nao foi renovada na execucao.")
                 print("Bronze Prevsys de Acoes Corretivas renovada.")
+
+        if args.teste_hml:
+            print(
+                "\nTESTE HML CONCLUIDO: ETAPAS 1 A 23 APROVADAS",
+                flush=True,
+            )
+            print(
+                "PUBLICACOES 24-26: NAO EXECUTADAS",
+                flush=True,
+            )
+            status_final(estados)
+            return 0
 
         if args.retomar_14a23:
             print(

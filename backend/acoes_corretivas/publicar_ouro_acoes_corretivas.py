@@ -44,9 +44,10 @@ RPC_PROMOVER = (
     "promover_mart_acoes_corretivas"
 )
 
-PROJECT_REF_ESPERADO = (
-    "lkhidajhsqgebjltyicb"
-)
+PROJECT_REFS_AUTORIZADOS = frozenset((
+    "ckfsarzmudwdehiiltwi",
+    "lkhidajhsqgebjltyicb",
+))
 
 TAMANHO_LOTE = 500
 
@@ -184,17 +185,22 @@ def carregar_configuracao():
             "no arquivo .env."
         )
 
-    if (
-        PROJECT_REF_ESPERADO
-        not in supabase_url
-    ):
+    projeto_ref = os.getenv(
+        "SSO_SUPABASE_PROJECT_REF", ""
+    ).strip()
 
+    if projeto_ref not in PROJECT_REFS_AUTORIZADOS:
         raise RuntimeError(
             "BLOQUEIO DE SEGURANCA: "
-            "SUPABASE_URL nao corresponde "
-            "ao projeto Portal SSO. "
-            f"Esperado ref: {PROJECT_REF_ESPERADO}. "
-            f"Recebido: {supabase_url}"
+            "referencia Supabase ausente ou nao autorizada."
+        )
+
+    url_esperada = f"https://{projeto_ref}.supabase.co"
+
+    if supabase_url != url_esperada:
+        raise RuntimeError(
+            "BLOQUEIO DE SEGURANCA: "
+            "URL Supabase diferente do projeto configurado."
         )
 
     return (
@@ -420,6 +426,7 @@ def carregar_ouro():
 GRUPOS_ACOES_VALIDOS = {"SEGURANCA", "OUTRAS_AREAS"}
 SITUACOES_ACOES_VALIDAS = {
     "EM_PRAZO", "VENCIDO", "FECHADO", "FECHADO_APOS_PRAZO",
+    "VENCE_HOJE",
 }
 CAMPOS_COMPARACAO_ACOES = (
     "grupo_sso", "situacao_gerencial", "divergencia_status_prazo",
@@ -754,7 +761,7 @@ def executar(
 
     print(
         "   Projeto validado:",
-        PROJECT_REF_ESPERADO,
+        os.getenv("SSO_SUPABASE_PROJECT_REF"),
     )
 
 

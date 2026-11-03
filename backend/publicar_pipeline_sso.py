@@ -416,6 +416,7 @@ def promover_globalmente(
                 f"Retornado={atual}"
             )
 
+
     return retorno
 
 
@@ -425,7 +426,12 @@ def promover_globalmente(
 
 def publicar(
     dry_run=False,
+    bronze_velocidade=None,
 ):
+    if bronze_velocidade is not None:
+        raise RuntimeError(
+            "Bronze de Velocidade bloqueado nesta etapa."
+        )
 
     print("=" * 70)
     print("PUBLICACAO GLOBAL - PIPELINE SSO")
@@ -489,6 +495,9 @@ def publicar(
     validar_estado_remoto_inicial(
         cliente
     )
+
+
+    print("Velocidade: BLOQUEADA (0 eventos).")
 
     if dry_run:
 
@@ -675,6 +684,7 @@ def publicar(
             "global atomica..."
         )
 
+
         retorno = promover_globalmente(
             cliente,
             carga_inspecoes,
@@ -702,6 +712,7 @@ def publicar(
             "\n14. Validando Mart "
             "de Inspecoes..."
         )
+
 
         inspecoes.validar_mart(
             cliente,
@@ -862,6 +873,7 @@ def publicar(
                 carga_planos_acao,
             )
 
+
         if staging_motoristas_enviada:
 
             print(
@@ -947,10 +959,18 @@ def main():
         ),
     )
 
+
+    parser.add_argument(
+        "--bronze-velocidade",
+        required=False,
+        help="Indisponivel: publicacao de Velocidade bloqueada.",
+    )
+
     args = parser.parse_args()
 
     publicar(
-        dry_run=args.dry_run
+        dry_run=args.dry_run,
+        bronze_velocidade=args.bronze_velocidade,
     )
 
 

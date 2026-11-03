@@ -199,6 +199,105 @@ def verificar_entradas():
 # GERA MART
 # =========================================================
 
+def resolver_vinculo_historico(mart, mapa):
+    # Preserva autoria historica; atributos organizacionais sao atuais.
+    antigo, atual = "001112-10", "000072-16"
+    alvo = mart["cod_colaborador"].eq(antigo)
+    if not alvo.any():
+        return mart
+
+    esperadas = {
+        4263: "2026-09-04", 4262: "2026-09-04",
+        2509: "2026-06-23", 2507: "2026-06-23",
+    }
+    recebidas = {
+        int(l["id_resposta"]): pd.to_datetime(
+            l["data_inspecao_normalizada"], errors="raise"
+        ).strftime("%Y-%m-%d")
+        for _, l in mart.loc[alvo].iterrows()
+    }
+
+    if (int(alvo.sum()) != 4 or recebidas != esperadas
+            or not mart.loc[
+                alvo, "status_vinculo_colaborador"
+            ].eq("VINCULADO").all()):
+        raise RuntimeError("Escopo do vinculo historico mudou.")
+
+    pasta = RAIZ / "data/bronze/cadastros/colaboradores"
+    folha = pd.read_excel(
+        pasta / "Colaboradores_Folha_RM.xlsx",
+        dtype=str, keep_default_na=False,
+    )
+    gestao = pd.read_excel(
+        pasta / "Colaboradores_RM.xlsx",
+        dtype=str, keep_default_na=False,
+    )
+
+    def chaves(df):
+        def normaliza(coluna):
+            return (
+                df[coluna].astype(str).str.strip()
+                .str.lstrip("0").replace("", "0")
+            )
+        return normaliza("CHAPA") + "-" + normaliza("CODCOLIGADA")
+
+    historico = folha.loc[chaves(folha).eq("1112-10")]
+    gestao_atual = gestao.loc[chaves(gestao).eq("72-16")]
+    mapa_atual = mapa.loc[mapa["cod_colaborador"].eq(atual)]
+
+    if (len(historico) != 1 or len(gestao_atual) != 1
+            or len(mapa_atual) != 1
+            or mapa["cod_colaborador"].eq(antigo).any()):
+        raise RuntimeError("Vinculos RM ou mapa divergentes.")
+
+    registro = historico.iloc[0]
+    pessoa = texto(registro["CODPESSOA"])
+    mesma_pessoa = folha.loc[
+        folha["CODPESSOA"].astype(str).str.strip().eq(pessoa)
+    ]
+    candidatos = set(chaves(mesma_pessoa)) & set(chaves(gestao))
+
+    if (not pessoa or candidatos != {"72-16"}
+            or texto(registro["CODSITUACAO"]).upper() != "D"):
+        raise RuntimeError("Identidade historica nao confirmada.")
+
+    admissao = pd.to_datetime(registro["DATAADMISSAO"], errors="coerce")
+    demissao = pd.to_datetime(registro["DATADEMISSAO"], errors="coerce")
+
+    if (pd.isna(admissao) or pd.isna(demissao)
+            or demissao.strftime("%Y-%m-%d") != "2026-10-01"
+            or any(
+                not admissao <= pd.Timestamp(data) <= demissao
+                for data in esperadas.values()
+            )):
+        raise RuntimeError("Periodo historico inconsistente.")
+
+    dados_rm = gestao_atual.iloc[0]
+    dados_mapa = mapa_atual.iloc[0]
+
+    if (texto(dados_rm["FUNCAO"]) != texto(dados_mapa["funcao_rm"])
+            or texto(dados_rm["SECAO"]) != texto(dados_mapa["secao_rm"])):
+        raise RuntimeError("Cargo ou setor diverge entre RM e mapa.")
+
+    campos = {
+        "nome_exibicao": "nome_exibicao",
+        "cargo_colaborador": "funcao_rm",
+        "setor_colaborador": "secao_rm",
+        "empresa_colaborador": "filial_agrupamento",
+    }
+
+    for destino, origem in campos.items():
+        valor = texto(dados_mapa[origem])
+        if not valor or mart.loc[alvo, destino].apply(texto).ne("").any():
+            raise RuntimeError("Atributo invalido: " + destino)
+        mart.loc[alvo, destino] = valor
+
+    print("Vinculo historico validado: 4 inspecoes.")
+    print("Codigo historico preservado: 001112-10.")
+    print("Atributos atuais provenientes de: 000072-16.")
+    return mart
+
+
 def construir_mart(
     prata,
     mapa,
@@ -385,6 +484,8 @@ def construir_mart(
         on="cod_colaborador",
         validate="many_to_one",
     )
+
+    mart = resolver_vinculo_historico(mart, mapa)
 
     # -----------------------------------------------------
     # Quality Gate do enriquecimento
@@ -1207,6 +1308,17 @@ def gerar_ouro_inspecoes():
     )
 
     parametros = gerar_parametros()
+    if mart_enriquecida["cod_colaborador"].eq("001112-10").any():
+        parametros.loc[len(parametros)] = {
+            "parametro": "vinculo_historico_001112-10",
+            "valor": "4 inspecoes; atributos atuais do vinculo 000072-16",
+            "descricao": (
+                "Codigo historico 001112-10 preservado. "
+                "Nome, cargo, setor e empresa obtidos do vinculo "
+                "atual da mesma pessoa, confirmado por CODPESSOA. "
+                "Atributos de exibicao nao necessariamente historicos."
+            ),
+        }
 
     try:
 
