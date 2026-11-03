@@ -1,0 +1,250 @@
+{
+  "data": "2026-10-30",
+  "ambiente": "pipelinesso-homologacao",
+  "project_id": "ckfsarzmudwdehiiltwi",
+  "perfil_id": "e6706ce6-a7fa-4f23-a51b-cdd3d3ccafdb",
+  "concorrencia_validada": true,
+  "tentativas": [
+    {
+      "numero": 1,
+      "metodo": "manutencao SQL com trava e tentativa pela interface autenticada",
+      "janela_segundos": 30,
+      "estado": "inconclusivo; nenhuma RPC aguardando a trava foi observada",
+      "resultado_sql": {
+        "error": {
+          "name": "HttpException",
+          "message": "Failed to run sql query: ERROR:  P0001: Nenhuma RPC concorrente observada em 30 segundos; alteracao revertida\nCONTEXT:  PL/pgSQL function inline_code_block line 36 at RAISE\n"
+        }
+      },
+      "estado_antes": {
+        "conferido_em": "2026-10-30 12:35:23.768972+00",
+        "id": "e6706ce6-a7fa-4f23-a51b-cdd3d3ccafdb",
+        "nome": "Homologacao_teste_31.10.26",
+        "descricao": "Teste de edição validado",
+        "ativo": false,
+        "versao": "8fc7228a940ff3c23777f38a64852871",
+        "capacidades": 0,
+        "atribuicoes": 0,
+        "auditorias": 21,
+        "administrador_preservado": true,
+        "conta_teste": [
+          {
+            "fim": "2026-10-30T18:43:20.625+00:00",
+            "ativo": true,
+            "vigente": true
+          }
+        ]
+      },
+      "estado_depois": {
+        "conferido_em": "2026-10-30 12:40:12.680059+00",
+        "id": "e6706ce6-a7fa-4f23-a51b-cdd3d3ccafdb",
+        "descricao": "Teste de edição validado",
+        "ativo": false,
+        "versao": "8fc7228a940ff3c23777f38a64852871",
+        "auditorias": 21,
+        "capacidades": 0,
+        "atribuicoes": 0,
+        "historico": [
+          {
+            "id": "85a30de1-cab3-4f24-ad18-318f8ed935c1",
+            "autor_id": "6b08a067-e510-4356-85a0-91982b0d9353",
+            "operacao": "INSERT",
+            "ocorrido_em": "2026-10-30T12:26:17.342906+00:00",
+            "descricao_antes": null,
+            "descricao_depois": "Teste"
+          },
+          {
+            "id": "9a988048-241d-4242-ab29-5fad02e72a27",
+            "autor_id": "6b08a067-e510-4356-85a0-91982b0d9353",
+            "operacao": "UPDATE",
+            "ocorrido_em": "2026-10-30T12:30:57.389612+00:00",
+            "descricao_antes": "Teste",
+            "descricao_depois": "Teste de edição validado"
+          },
+          {
+            "id": "7b002848-f99a-4e96-8e0f-8c05683d68b7",
+            "autor_id": "6b08a067-e510-4356-85a0-91982b0d9353",
+            "operacao": "UPDATE",
+            "ocorrido_em": "2026-10-30T12:31:38.3568+00:00",
+            "descricao_antes": "Teste de edição validado",
+            "descricao_depois": "Teste de edição validado"
+          }
+        ],
+        "administrador_preservado": true
+      },
+      "rollback_confirmado": true,
+      "confirmacao_usuario": "Usuario informou que nao clicou e pediu execucao automatica de todo o processo."
+    },
+    {
+      "numero": 2,
+      "executor": "agente, via aba IAB controlada ja autenticada",
+      "estado": "aprovado no escopo descrito",
+      "banco": {
+        "inicio": "2026-10-30T12:49:52.519421+00:00",
+        "observado_em": "2026-10-30T12:49:57.780611+00:00",
+        "perfil_antes": {
+          "id": "e6706ce6-a7fa-4f23-a51b-cdd3d3ccafdb",
+          "nome": "Homologacao_teste_31.10.26",
+          "ativo": false,
+          "codigo": "perfil_69e96801efb1468194df36955a836b3d",
+          "versao": "8fc7228a940ff3c23777f38a64852871",
+          "criado_em": "2026-10-30T12:26:17.33526+00:00",
+          "descricao": "Teste de edição validado",
+          "capacidades": [],
+          "atualizado_em": "2026-10-30T12:31:38.356653+00:00"
+        },
+        "pid_manutencao": 953288,
+        "rpc_aguardando": [
+          {
+            "pid": 953291,
+            "estado": "active",
+            "aplicacao": "PostgREST 14.18",
+            "wait_event": "advisory",
+            "bloqueadores": [
+              953288
+            ],
+            "usuario_banco": "authenticator",
+            "wait_event_type": "Lock"
+          }
+        ],
+        "ator_manutencao": null,
+        "auditorias_antes": 21,
+        "perfil_apos_manutencao": {
+          "id": "e6706ce6-a7fa-4f23-a51b-cdd3d3ccafdb",
+          "nome": "Homologacao_teste_31.10.26",
+          "ativo": false,
+          "codigo": "perfil_69e96801efb1468194df36955a836b3d",
+          "versao": "e3d753147fc34b30fdcfa2dc537356f8",
+          "criado_em": "2026-10-30T12:26:17.33526+00:00",
+          "descricao": "Teste de concorrência — versão preservada",
+          "capacidades": [],
+          "atualizado_em": "2026-10-30T12:49:52.514249+00:00"
+        },
+        "auditorias_antes_do_commit": 22,
+        "administrador_permanente_preservado": true
+      },
+      "interface": {
+        "mensagem": "O perfil mudou. Atualize a tela antes de salvar.",
+        "gravacao_antiga_rejeitada": true,
+        "captura": "imagens/CONCORRENCIA_GESTAO_20261030.jpg",
+        "sha256": "5647997151b27bd3e65431393a3faa204c9b1c0e37cbaa49868d866ec9fd4c20"
+      },
+      "conferencia_final": {
+        "conferido_em": "2026-10-30 12:51:20.267321+00",
+        "id": "e6706ce6-a7fa-4f23-a51b-cdd3d3ccafdb",
+        "descricao": "Teste de concorrência — versão preservada",
+        "ativo": false,
+        "versao": "e3d753147fc34b30fdcfa2dc537356f8",
+        "capacidades": 0,
+        "atribuicoes": 0,
+        "auditorias_total": 22,
+        "historico": [
+          {
+            "id": "85a30de1-cab3-4f24-ad18-318f8ed935c1",
+            "antes": null,
+            "depois": {
+              "id": "e6706ce6-a7fa-4f23-a51b-cdd3d3ccafdb",
+              "nome": "Homologacao_teste_31.10.26",
+              "ativo": true,
+              "codigo": "perfil_69e96801efb1468194df36955a836b3d",
+              "criado_em": "2026-10-30T12:26:17.33526+00:00",
+              "descricao": "Teste",
+              "atualizado_em": "2026-10-30T12:26:17.33526+00:00"
+            },
+            "autor_id": "6b08a067-e510-4356-85a0-91982b0d9353",
+            "operacao": "INSERT",
+            "ocorrido_em": "2026-10-30T12:26:17.342906+00:00",
+            "papel_sessao": "authenticated",
+            "sessao_banco": "authenticator"
+          },
+          {
+            "id": "9a988048-241d-4242-ab29-5fad02e72a27",
+            "antes": {
+              "id": "e6706ce6-a7fa-4f23-a51b-cdd3d3ccafdb",
+              "nome": "Homologacao_teste_31.10.26",
+              "ativo": true,
+              "codigo": "perfil_69e96801efb1468194df36955a836b3d",
+              "criado_em": "2026-10-30T12:26:17.33526+00:00",
+              "descricao": "Teste",
+              "atualizado_em": "2026-10-30T12:26:17.33526+00:00"
+            },
+            "depois": {
+              "id": "e6706ce6-a7fa-4f23-a51b-cdd3d3ccafdb",
+              "nome": "Homologacao_teste_31.10.26",
+              "ativo": true,
+              "codigo": "perfil_69e96801efb1468194df36955a836b3d",
+              "criado_em": "2026-10-30T12:26:17.33526+00:00",
+              "descricao": "Teste de edição validado",
+              "atualizado_em": "2026-10-30T12:30:57.389056+00:00"
+            },
+            "autor_id": "6b08a067-e510-4356-85a0-91982b0d9353",
+            "operacao": "UPDATE",
+            "ocorrido_em": "2026-10-30T12:30:57.389612+00:00",
+            "papel_sessao": "authenticated",
+            "sessao_banco": "authenticator"
+          },
+          {
+            "id": "7b002848-f99a-4e96-8e0f-8c05683d68b7",
+            "antes": {
+              "id": "e6706ce6-a7fa-4f23-a51b-cdd3d3ccafdb",
+              "nome": "Homologacao_teste_31.10.26",
+              "ativo": true,
+              "codigo": "perfil_69e96801efb1468194df36955a836b3d",
+              "criado_em": "2026-10-30T12:26:17.33526+00:00",
+              "descricao": "Teste de edição validado",
+              "atualizado_em": "2026-10-30T12:30:57.389056+00:00"
+            },
+            "depois": {
+              "id": "e6706ce6-a7fa-4f23-a51b-cdd3d3ccafdb",
+              "nome": "Homologacao_teste_31.10.26",
+              "ativo": false,
+              "codigo": "perfil_69e96801efb1468194df36955a836b3d",
+              "criado_em": "2026-10-30T12:26:17.33526+00:00",
+              "descricao": "Teste de edição validado",
+              "atualizado_em": "2026-10-30T12:31:38.356653+00:00"
+            },
+            "autor_id": "6b08a067-e510-4356-85a0-91982b0d9353",
+            "operacao": "UPDATE",
+            "ocorrido_em": "2026-10-30T12:31:38.3568+00:00",
+            "papel_sessao": "authenticated",
+            "sessao_banco": "authenticator"
+          },
+          {
+            "id": "a68dc416-97e9-4363-923e-42bb15909165",
+            "antes": {
+              "id": "e6706ce6-a7fa-4f23-a51b-cdd3d3ccafdb",
+              "nome": "Homologacao_teste_31.10.26",
+              "ativo": false,
+              "codigo": "perfil_69e96801efb1468194df36955a836b3d",
+              "criado_em": "2026-10-30T12:26:17.33526+00:00",
+              "descricao": "Teste de edição validado",
+              "atualizado_em": "2026-10-30T12:31:38.356653+00:00"
+            },
+            "depois": {
+              "id": "e6706ce6-a7fa-4f23-a51b-cdd3d3ccafdb",
+              "nome": "Homologacao_teste_31.10.26",
+              "ativo": false,
+              "codigo": "perfil_69e96801efb1468194df36955a836b3d",
+              "criado_em": "2026-10-30T12:26:17.33526+00:00",
+              "descricao": "Teste de concorrência — versão preservada",
+              "atualizado_em": "2026-10-30T12:49:52.514249+00:00"
+            },
+            "autor_id": null,
+            "operacao": "UPDATE",
+            "ocorrido_em": "2026-10-30T12:49:52.514719+00:00",
+            "papel_sessao": "none",
+            "sessao_banco": "postgres"
+          }
+        ],
+        "administrador_preservado": true
+      }
+    }
+  ],
+  "limites": [
+    "Duas sessoes reais e distintas comprovadas: manutencao 953288 e PostgREST 953291, com Lock/advisory e bloqueador identificado.",
+    "Somente uma alteracao persistiu, de manutencao, corretamente auditada com autor_id null e sessao postgres; a tentativa antiga pela interface nao gravou nem gerou evento de alteracao.",
+    "Nao houve novo administrador, alteracao de concessoes, mudanca em Auth ou credenciais.",
+    "Esse caso nao exercita todos os pares de operacoes ou uma disputa entre dois administradores permanentes."
+  ],
+  "escopo": "Trava global e conflito de versao entre uma manutencao SQL e uma RPC authenticated pela interface, em perfil inativo sem capacidades nem atribuicoes."
+}

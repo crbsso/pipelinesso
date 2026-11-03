@@ -1,7 +1,6 @@
+import { autorizarConsulta } from "@/lib/auth/abasServidor";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
-import { createClient as createServerClient } from "@/lib/supabase/server";
-
 export const dynamic = "force-dynamic";
 
 const headers = { "Cache-Control": "private, no-store" };
@@ -52,18 +51,8 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const auth = await createServerClient();
-  const {
-    data: { user },
-    error: authError,
-  } = await auth.auth.getUser();
-
-  if (authError || !user) {
-    return NextResponse.json(
-      { error: "Nao autorizado." },
-      { status: 401, headers },
-    );
-  }
+  const negacao = await autorizarConsulta("motoristas_direcao");
+  if (negacao) return negacao;
 
   const q = request.nextUrl.searchParams;
   const paginaTexto = q.get("pagina") ?? "1";

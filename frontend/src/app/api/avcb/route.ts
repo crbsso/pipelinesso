@@ -1,29 +1,11 @@
+import { autorizarConsulta } from "@/lib/auth/abasServidor";
 import { NextResponse } from "next/server";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
-import { createClient as createServerClient } from "@/lib/supabase/server";
-
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  // 1. Valida o usuário autenticado pela sessão do Portal.
-  const authSupabase = await createServerClient();
-
-  const { data: claimsData, error: claimsError } =
-    await authSupabase.auth.getClaims();
-
-  if (claimsError || !claimsData?.claims) {
-    return NextResponse.json(
-      {
-        error: "Não autorizado.",
-      },
-      {
-        status: 401,
-        headers: {
-          "Cache-Control": "private, no-store",
-        },
-      }
-    );
-  }
+  const negacao = await autorizarConsulta("avcb");
+  if (negacao) return negacao;
 
   // 2. Credenciais internas do servidor para consultar o mart.
   const supabaseUrl = process.env.SUPABASE_URL;

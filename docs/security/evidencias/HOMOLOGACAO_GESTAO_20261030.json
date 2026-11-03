@@ -1,0 +1,257 @@
+{
+  "data": "2026-10-30",
+  "ambiente": "pipelinesso-homologacao",
+  "project_id": "ckfsarzmudwdehiiltwi",
+  "candidato_inicial": "81b5a013d3b9828273d18e7871e3a05c8eb41155",
+  "candidato_build": "9b9a0bf84adda8aca1812991f74a1b9f8c52f415",
+  "migration_remota": "20261030103220_integrar_gestao_acessos_portal",
+  "aplicacao": {
+    "success": true
+  },
+  "testes_pg17": [
+    {
+      "resultado": "privilegios,4 bloqueios de ultimo administrador,rollback de auditoria,fingerprint antigo,ator externo,autoria verificada,escopo nativo,analise sem provisionamento,expiracao: aprovados"
+    }
+  ],
+  "capacidades_independentes": [
+    {
+      "resultado": "3 capacidades independentes: aprovadas; alteracoes descartadas"
+    }
+  ],
+  "leituras_authenticated": [
+    {
+      "operacao": "usuarios",
+      "itens": 2
+    },
+    {
+      "operacao": "perfis",
+      "itens": 1
+    },
+    {
+      "operacao": "atribuicoes",
+      "itens": 1
+    },
+    {
+      "operacao": "solicitacoes",
+      "itens": 0
+    },
+    {
+      "operacao": "auditoria",
+      "itens": 18
+    }
+  ],
+  "comparacao": {
+    "operacionaisIguais": true,
+    "rotinasIguais": true,
+    "quantidadeRelacoes": 34,
+    "quantidadeRotinas": 9,
+    "auditoriasAntes": 18,
+    "auditoriasDepois": 18,
+    "adminPreservado": true
+  },
+  "advisors_antes": [
+    {
+      "nome": "rls_enabled_no_policy",
+      "nivel": "INFO",
+      "quantidade": 38,
+      "remediacao": "https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy"
+    },
+    {
+      "nome": "function_search_path_mutable",
+      "nivel": "WARN",
+      "quantidade": 1,
+      "remediacao": "https://supabase.com/docs/guides/database/database-linter?lint=0011_function_search_path_mutable"
+    },
+    {
+      "nome": "auth_leaked_password_protection",
+      "nivel": "WARN",
+      "quantidade": 1,
+      "remediacao": "https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection"
+    }
+  ],
+  "advisors_depois": [
+    {
+      "nome": "rls_enabled_no_policy",
+      "nivel": "INFO",
+      "quantidade": 38,
+      "remediacao": "https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy"
+    },
+    {
+      "nome": "function_search_path_mutable",
+      "nivel": "WARN",
+      "quantidade": 1,
+      "remediacao": "https://supabase.com/docs/guides/database/database-linter?lint=0011_function_search_path_mutable"
+    },
+    {
+      "nome": "auth_leaked_password_protection",
+      "nivel": "WARN",
+      "quantidade": 1,
+      "remediacao": "https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection"
+    }
+  ],
+  "concorrencia": {
+    "validada": true,
+    "escopo": "Trava global e conflito de versao entre uma manutencao SQL e uma RPC authenticated pela interface, em perfil inativo sem capacidades nem atribuicoes.",
+    "evidencia": "CONCORRENCIA_GESTAO_20261030.json",
+    "tentativa_inicial_via_duas_chamadas_mcp": {
+      "validada": false,
+      "motivo": "Duas requisicoes disparadas em paralelo pela ferramenta chegaram ao banco em sequencia. PIDs distintos, mas sem sobreposicao; nao comprova espera concorrente.",
+      "sessoes": [
+        [
+          {
+            "resultado": {
+              "pid": 944366,
+              "inicio": "2026-10-30T10:35:00.503138+00:00",
+              "sessao": "A",
+              "apos_trava": "2026-10-30T10:35:08.511453+00:00",
+              "trava_inicial_livre": true,
+              "espera_ou_retencao_ms": 8008,
+              "ultimo_administrador_preservado": true
+            }
+          }
+        ],
+        [
+          {
+            "resultado": {
+              "pid": 944380,
+              "inicio": "2026-10-30T10:35:09.974704+00:00",
+              "sessao": "B",
+              "apos_trava": "2026-10-30T10:35:17.983034+00:00",
+              "trava_inicial_livre": true,
+              "espera_ou_retencao_ms": 8008,
+              "ultimo_administrador_preservado": true
+            }
+          }
+        ]
+      ],
+      "fixture_permanente_adicional_criada": false
+    }
+  },
+  "testes_locais": 75,
+  "build_hml": true,
+  "eslint": true,
+  "ui": {
+    "endereco": "http://127.0.0.1:3001",
+    "login_real": "usuario informou login realizado",
+    "estado": "Cenarios administrativos desta rodada validados; matriz real e isolamento dos paineis pendentes.",
+    "senha_capturada": false,
+    "confirmacao_data": "2026-10-30",
+    "consultas": [
+      {
+        "rota": "/gestao/usuarios",
+        "resultado": "Duas contas carregadas; captura enviada pelo usuario."
+      },
+      {
+        "rota": "/gestao/permissoes",
+        "resultado": "Perfil e historico carregados; captura enviada pelo usuario."
+      },
+      {
+        "rota": "/gestao/solicitacoes-acesso",
+        "resultado": "Usuario confirmou: Nao achei erros."
+      }
+    ],
+    "erro_inicial": {
+      "rota": "/consultas/painel-gerencial/avcb",
+      "mensagem": "Nao foi possivel carregar os dados de AVCB.",
+      "causa_verificada": "Login redireciona ao AVCB; consulta legada exige configuracao de servidor nao incluida neste servidor local.",
+      "corrigido": false,
+      "escopo": "Nao integra esta validacao das telas de gestao."
+    },
+    "gravacoes_com_login_real_validadas": true,
+    "primeira_tentativa_gravacao": {
+      "erro": "Origem da requisicao invalida.",
+      "perfil_persistido": false,
+      "auditorias_preservadas": 18,
+      "causa": "Origem externa 127.0.0.1 difere de localhost na URL interna Next.js.",
+      "correcao": "PORTAL_SSO_ORIGIN definido exclusivamente no servidor; 78 testes, lint, build e nove checks HTTP passaram.",
+      "nova_tentativa_usuario": "Criacao, edicao e desativacao concluidas apos correcao e verificadas na auditoria.",
+      "evidencia": "CORRECAO_ORIGEM_GESTAO_20261030.json"
+    },
+    "criacao_perfil_validada": true,
+    "evidencia_gravacoes": "GRAVACOES_GESTAO_20261030.json",
+    "escopo_gravacoes_validadas": [
+      "criar perfil sem capacidades",
+      "editar descricao do perfil vazio",
+      "desativar perfil vazio",
+      "criar e editar vigencia de concessao redundante temporaria",
+      "suspender e reativar concessao adicional",
+      "aprovar e rejeitar solicitacoes ficticias"
+    ],
+    "fluxos_pendentes": [
+      "matriz concreta de negocio",
+      "integracao e isolamento das consultas operacionais"
+    ],
+    "controle_navegador": "Aba IAB criada e controlada com sessao existente; nao foi necessario novo login ou captura de credenciais.",
+    "fluxos_administrativos_evidencia": "FLUXOS_ADMINISTRATIVOS_GESTAO_20261030.json"
+  },
+  "conta_teste": {
+    "email": "seguranca@celeogroup.com",
+    "fim_exclusivo": "2026-10-30T18:43:20.625Z",
+    "renovada": false
+  },
+  "limites": [
+    "Sem push/PR/merge/PROD.",
+    "Consultas operacionais ainda nao integradas com o novo modelo.",
+    "Auditoria npm restante: 15 registros, sendo 9 altos, 2 moderados e 4 baixos.",
+    "Testes SQL transacionais descartados; auditorias persistentes preservadas em 18."
+  ],
+  "http_sem_sessao": [
+    {
+      "path": "/signin",
+      "status": 200,
+      "location": null,
+      "cache": "s-maxage=31536000",
+      "signinFormulario": true
+    },
+    {
+      "path": "/gestao/usuarios",
+      "status": 307,
+      "location": "/signin",
+      "cache": null
+    },
+    {
+      "path": "/gestao/permissoes",
+      "status": 307,
+      "location": "/signin",
+      "cache": null
+    },
+    {
+      "path": "/gestao/solicitacoes-acesso",
+      "status": 307,
+      "location": "/signin",
+      "cache": null
+    },
+    {
+      "path": "/api/gestao/usuarios",
+      "status": 401,
+      "location": null,
+      "cache": "private, no-store, max-age=0"
+    },
+    {
+      "path": "/api/gestao/permissoes",
+      "status": 401,
+      "location": null,
+      "cache": "private, no-store, max-age=0"
+    },
+    {
+      "path": "/api/gestao/solicitacoes-acesso",
+      "status": 401,
+      "location": null,
+      "cache": "private, no-store, max-age=0"
+    },
+    {
+      "path": "/api/gestao/usuarios",
+      "cenario": "origem cruzada",
+      "status": 403
+    }
+  ],
+  "estado_apos_rodada_administrativa": {
+    "auditorias": 38,
+    "contas_auth": 2,
+    "atribuicoes": 3,
+    "concessao_teste_ativa": false,
+    "perfil_teste_ativo": false,
+    "capacidades_teste_ativas": 0,
+    "originais_preservadas": true
+  }
+}

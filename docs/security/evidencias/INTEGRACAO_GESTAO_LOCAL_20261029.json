@@ -1,0 +1,192 @@
+{
+  "data_referencia": "2026-10-29",
+  "branch": "feat/portal-sso-permissoes-20261029",
+  "base": "73fbae339a7fe5643b973fa0e0c93cd5037f989b",
+  "estado": "local; terceira migration nao aplicada em HML ou PROD",
+  "validacao": {
+    "testes": 75,
+    "aprovados": 75,
+    "typescript": true,
+    "eslint_alterados": true,
+    "build_webpack": true,
+    "git_diff_check": true,
+    "banco": "PGlite 0.5.13 / PostgreSQL 18.6 descartavel",
+    "teste_interativo_nova_interface": false,
+    "duas_sessoes_pg17": false
+  },
+  "dependencias": {
+    "instaladas": {
+      "next": "16.4.1",
+      "eslint-config-next": "16.4.1",
+      "postcss": "8.5.23"
+    },
+    "auditoria_antes": {
+      "low": 4,
+      "moderate": 3,
+      "high": 13,
+      "critical": 1,
+      "total": 21
+    },
+    "auditoria_depois": {
+      "info": 0,
+      "low": 4,
+      "moderate": 2,
+      "high": 9,
+      "critical": 0,
+      "total": 15
+    },
+    "evidencia": "DEPENDENCIAS_FRONTEND_20261030.json",
+    "atualizacao_autorizada_concluida": true
+  },
+  "arquivos": [
+    {
+      "arquivo": "frontend/package-lock.json",
+      "sha256": "cbb45e5f13bdcf1471ea55f2cc6d0ad4e2999b0f33de7f8218cfeac2fbc89c8c"
+    },
+    {
+      "arquivo": "frontend/package.json",
+      "sha256": "027eac16e44310257533c89b3db3dbd38c55bde881b0c17a2a92fcb69e946789"
+    },
+    {
+      "arquivo": "frontend/src/app/(admin)/gestao/permissoes/page.tsx",
+      "sha256": "1f96072eda8b968e174e0df37a3a91398dcdcaee49b9a0ed4e77062692c8b8b2"
+    },
+    {
+      "arquivo": "frontend/src/app/(admin)/gestao/solicitacoes-acesso/page.tsx",
+      "sha256": "de8158d5ee6ce22839e496c44b839eac9cd1c126ffdf26f941dd76cf661f1901"
+    },
+    {
+      "arquivo": "frontend/src/app/(admin)/gestao/usuarios/page.tsx",
+      "sha256": "63d3ffece4c8bfb8519c3d82ecd62567e708acaee6fd73aeca447a013bf7a03e"
+    },
+    {
+      "arquivo": "frontend/src/app/api/gestao/atribuicoes/route.ts",
+      "sha256": "14ee6083f7d863b9cbee173b9ac0aab90d5203a5924b082db7147bd45ba89be7"
+    },
+    {
+      "arquivo": "frontend/src/app/api/gestao/auditoria/route.ts",
+      "sha256": "e102f12d1e41e964a9d998236c11a057bed878fef9e31b3863962f0ef1f35b3f"
+    },
+    {
+      "arquivo": "frontend/src/app/api/gestao/catalogo-perfis/route.ts",
+      "sha256": "48dbd4976e45cd9dd3f38e2cf822068c02aba406007ed1f9e48a646005294fbb"
+    },
+    {
+      "arquivo": "frontend/src/app/api/gestao/contexto/route.ts",
+      "sha256": "ae3f4a2b82a5e05748de58cf2fea85fd9ee4f2969161f235a8df6df95d9eae37"
+    },
+    {
+      "arquivo": "frontend/src/app/api/gestao/permissoes/route.ts",
+      "sha256": "d3b6ea9509243ddd4cb1c54f57cfe26376b5bc48bd7ae3569dd3adf3ef766637"
+    },
+    {
+      "arquivo": "frontend/src/app/api/gestao/solicitacoes-acesso/[id]/route.ts",
+      "sha256": "a06b80ee10e816b43a728cd9824ea56fb9907a4da6ea445097915ae5e55e44b2"
+    },
+    {
+      "arquivo": "frontend/src/app/api/gestao/solicitacoes-acesso/route.ts",
+      "sha256": "615e26ad91d497a5e08f6cb81b887d7177d67ed0d97d781df31c0f41ff7421a9"
+    },
+    {
+      "arquivo": "frontend/src/app/api/gestao/usuarios/[id]/atribuicoes/route.ts",
+      "sha256": "bd9a0782f1eb32fb1b9a5c965fa9aef8e190df1b5e582aac1d8902d60dd61ab5"
+    },
+    {
+      "arquivo": "frontend/src/app/api/gestao/usuarios/route.ts",
+      "sha256": "4538728469e11380fde3a8f0bf41bc2df2b35dda7154b6c2b3c722829ce30636"
+    },
+    {
+      "arquivo": "frontend/src/components/gestao/EditorAbrangencias.tsx",
+      "sha256": "dcbbac24311972fc405b90a34b69411116eb51ff3a55473ccdf1e94a09a16172"
+    },
+    {
+      "arquivo": "frontend/src/components/gestao/EditorConcessao.tsx",
+      "sha256": "85af1153e68806b1ef4f2b369aaf50408a98ddba7c43fe24e74253e41361d16f"
+    },
+    {
+      "arquivo": "frontend/src/components/gestao/GestaoPermissoes.tsx",
+      "sha256": "08dd87c8fd80dc80f1c8b6afad15f1d798914ee0dec8f84f38dc12dc78469af7"
+    },
+    {
+      "arquivo": "frontend/src/components/gestao/GestaoSolicitacoes.tsx",
+      "sha256": "16befbb12302b570577f48271e2003d462c435aa1a7e0462c2c5b54ae5ba16b4"
+    },
+    {
+      "arquivo": "frontend/src/components/gestao/GestaoUI.tsx",
+      "sha256": "72c691cc769ffdccf90769df175a4e0d98676a1edbdfc7c3ce9d632da1e06de3"
+    },
+    {
+      "arquivo": "frontend/src/components/gestao/GestaoUsuarios.tsx",
+      "sha256": "cb86d1220a11876b41bc23323488f235de5c282701a4fa3f89463f1304f38865"
+    },
+    {
+      "arquivo": "frontend/src/components/gestao/ProtecaoGestao.tsx",
+      "sha256": "ef911ab2faa370a52d2df9e85beb394f375c8fa367e80a229860599b489db270"
+    },
+    {
+      "arquivo": "frontend/src/layout/AppSidebar.tsx",
+      "sha256": "b93388f611240486f8771a3b3b139a1088edeb34d3804eceabab11705120f7c0"
+    },
+    {
+      "arquivo": "frontend/src/lib/auth/carregarContextoAcesso.ts",
+      "sha256": "7dcb353d980e5dee6e3eebbc48a1d582c7631ead0bc9a67604b873c343f526fb"
+    },
+    {
+      "arquivo": "frontend/src/lib/auth/politicaAcesso.ts",
+      "sha256": "6154e6741b215809e4c0421730f7ab9626fe9b3bc997e1cd5e2a9c3df0ca55fa"
+    },
+    {
+      "arquivo": "frontend/src/lib/auth/requirePermission.ts",
+      "sha256": "98bb8b9852a12f216bf2fcfd07c0dbddb83f5a409cd0e351485ffe9bc5784bfa"
+    },
+    {
+      "arquivo": "frontend/src/lib/gestao/cliente.ts",
+      "sha256": "666be136107bf7e7cd8d9719b398acc0255b8aa4baca1be122f5f08594139a03"
+    },
+    {
+      "arquivo": "frontend/src/lib/gestao/contratos.ts",
+      "sha256": "12b8e63773083e8c0107aa697a8b5af32e71e92591eef0e214063563f2a236b3"
+    },
+    {
+      "arquivo": "frontend/src/lib/gestao/http.ts",
+      "sha256": "2371a510c1434ba9203dff6a513410daef6324abc81d8c753965c03dd38baf92"
+    },
+    {
+      "arquivo": "frontend/src/lib/gestao/servidor.ts",
+      "sha256": "a9bb535447df8b2baf01c998019172b084134e5652c99f2764692daffb0a6636"
+    },
+    {
+      "arquivo": "frontend/src/svg.d.ts",
+      "sha256": "4e5c6348b9b4603de6c76b4154124d794887b5dd79b78d972d40cb0ab44ff0a7"
+    },
+    {
+      "arquivo": "frontend/tests/gestaoBanco.test.mjs",
+      "sha256": "e4f2e94543117888199651cfc3207f931f74834e2b550b7be503821bfb60276d"
+    },
+    {
+      "arquivo": "frontend/tests/gestaoHttp.test.mjs",
+      "sha256": "37a806957d03f74b07f580652f939162d55d78acc71554618c67608aa49634f7"
+    },
+    {
+      "arquivo": "frontend/tests/gestaoTelas.test.mjs",
+      "sha256": "cb679b7454b8f3ec2dc457f6419e903ebfea1d097a7509d920aaa9ab8053dc75"
+    },
+    {
+      "arquivo": "frontend/tsconfig.json",
+      "sha256": "95d325f134d200ca280d7ce7a63b044af91655be4f986aae718d0362a245633b"
+    },
+    {
+      "arquivo": "supabase/migrations/20261029161856_preparar_gestao_acesso_portal.sql",
+      "sha256": "fd52c94053e3ae7a326806159f208fc660e8ef6c050806ef7ad86776d69b7d86"
+    },
+    {
+      "arquivo": "supabase/migrations/20261029162052_criar_permissionamento_portal.sql",
+      "sha256": "a3e82922d5b7dd0000403c84d0a6b734c1849f160640175c94784bc37f1a9dcb"
+    },
+    {
+      "arquivo": "supabase/migrations/20261030103220_integrar_gestao_acessos_portal.sql",
+      "sha256": "92ea6e55cc2f035ab45bf10cfcd90b5ccf33339cfb6a8c5b77ffec7d939c6814"
+    }
+  ],
+  "data_validacao": "2026-10-30"
+}

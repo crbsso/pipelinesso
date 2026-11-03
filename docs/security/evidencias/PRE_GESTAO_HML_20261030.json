@@ -1,0 +1,16 @@
+{
+  "project_id": "ckfsarzmudwdehiiltwi",
+  "ambiente": "pipelinesso-homologacao",
+  "somente_leitura": true,
+  "verificado_em": "2026-10-30 10:18:44.998674+00",
+  "nova_gestao_ja_instalada": false,
+  "conta_teste": {
+    "fim": "2026-10-30T18:43:20.625+00:00",
+    "inicio": "2026-10-29T18:43:20.625+00:00",
+    "vigente": true,
+    "confirmada": true,
+    "cadastro_ativo": true,
+    "atribuicao_ativa": true
+  },
+  "administradores_permanentes": 1
+}

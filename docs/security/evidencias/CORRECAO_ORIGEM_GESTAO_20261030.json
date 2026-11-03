@@ -1,0 +1,93 @@
+{
+  "data": "2026-10-30",
+  "conferido_em": "2026-10-30T12:23:04.910Z",
+  "candidato": "2971511ec69eeb5ed5ee85e5a118e43f5f9572da",
+  "ambiente": "local conectado exclusivamente a HML",
+  "origem_servidor": "http://127.0.0.1:3001",
+  "variavel_servidor": "PORTAL_SSO_ORIGIN",
+  "origem_de_cabecalhos_encaminhados": false,
+  "testes": 78,
+  "aprovados": 78,
+  "eslint": true,
+  "build_webpack_hml": true,
+  "typescript_no_build": true,
+  "reproducao_antes": [
+    {
+      "origem": "http://127.0.0.1:3001",
+      "status": 403
+    },
+    {
+      "origem": "http://localhost:3001",
+      "status": 401
+    }
+  ],
+  "http_sem_sessao_depois": [
+    {
+      "cenario": "origem local correta",
+      "status": 401,
+      "mensagem": "Entre para continuar."
+    },
+    {
+      "cenario": "alias localhost",
+      "status": 403,
+      "mensagem": "Origem da requisição inválida."
+    },
+    {
+      "cenario": "outra porta",
+      "status": 403,
+      "mensagem": "Origem da requisição inválida."
+    },
+    {
+      "cenario": "outro protocolo",
+      "status": 403,
+      "mensagem": "Origem da requisição inválida."
+    },
+    {
+      "cenario": "origem externa",
+      "status": 403,
+      "mensagem": "Origem da requisição inválida."
+    },
+    {
+      "cenario": "fetch cross-site",
+      "status": 403,
+      "mensagem": "Origem da requisição inválida."
+    },
+    {
+      "cenario": "origem ausente",
+      "status": 403,
+      "mensagem": "Origem da requisição inválida."
+    },
+    {
+      "cenario": "origem null",
+      "status": 403,
+      "mensagem": "Origem da requisição inválida."
+    },
+    {
+      "cenario": "forwarded forjado",
+      "status": 403,
+      "mensagem": "Origem da requisição inválida."
+    }
+  ],
+  "gravacao_real_apos_correcao": "Criacao confirmada pelo usuario e por INSERT auditado no banco. Ver GRAVACOES_GESTAO_20261030.json.",
+  "banco_apos_tentativa_bloqueada": {
+    "conferido_em": "2026-10-30T12:17:46.167991Z",
+    "perfis": 1,
+    "auditorias": 18,
+    "perfis_teste": 0
+  },
+  "arquivos": [
+    {
+      "arquivo": "frontend/src/lib/gestao/http.ts",
+      "sha256": "9548383dd006bef172bab77607438dd07fe32227df828229c2b6d6cbfaecab29"
+    },
+    {
+      "arquivo": "frontend/src/lib/gestao/servidor.ts",
+      "sha256": "3c217c9e5efbe705dfb97076076abfb9b70781c087a4f45b8ff3cbb6dfbdfda8"
+    },
+    {
+      "arquivo": "frontend/tests/gestaoHttp.test.mjs",
+      "sha256": "4c9ce498c69d56a7d3eac4b4b3bed4f035575e16f9463c0c047cf4583d539b8f"
+    }
+  ],
+  "referencia": "https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html#identifying-the-target-origin"
+}

@@ -1,0 +1,359 @@
+{
+  "project_id": "ckfsarzmudwdehiiltwi",
+  "project_name": "pipelinesso-homologacao",
+  "instante_utc": "2026-10-29T16:14:45.675Z",
+  "versao": "17.11",
+  "objetos_acesso": {
+    "rpc": false,
+    "perfis_portal": false,
+    "solicitacoes_acesso": false,
+    "schema_portal_acesso": false
+  },
+  "quantidade_contas": 1,
+  "relacoes_operacionais": [
+    {
+      "acl": "{postgres=arwdDxtm/postgres,anon=Dxtm/postgres,authenticated=Dxtm/postgres,service_role=rDxtm/postgres}",
+      "oid": "17819",
+      "rls": true,
+      "nome": "fato_motoristas_eventos_velocidade",
+      "tipo": "r",
+      "opcoes": null,
+      "definicao_view": null
+    },
+    {
+      "acl": "{postgres=arwdDxtm/postgres,service_role=arDxtm/postgres}",
+      "oid": "17605",
+      "rls": true,
+      "nome": "fato_motoristas_viagens",
+      "tipo": "r",
+      "opcoes": null,
+      "definicao_view": null
+    },
+    {
+      "acl": "{postgres=arwdDxtm/postgres,service_role=rxtm/postgres}",
+      "oid": "17882",
+      "rls": true,
+      "nome": "mart_acoes_corretivas",
+      "tipo": "r",
+      "opcoes": null,
+      "definicao_view": null
+    },
+    {
+      "acl": "{postgres=arwdDxtm/postgres,service_role=rxtm/postgres}",
+      "oid": "17961",
+      "rls": true,
+      "nome": "mart_avcb",
+      "tipo": "r",
+      "opcoes": null,
+      "definicao_view": null
+    },
+    {
+      "acl": "{postgres=arwdDxtm/postgres,service_role=rxtm/postgres}",
+      "oid": "17974",
+      "rls": true,
+      "nome": "mart_inspecoes",
+      "tipo": "r",
+      "opcoes": null,
+      "definicao_view": null
+    },
+    {
+      "acl": "{postgres=arwdDxtm/postgres,service_role=rxtm/postgres}",
+      "oid": "17691",
+      "rls": true,
+      "nome": "mart_motoristas",
+      "tipo": "r",
+      "opcoes": null,
+      "definicao_view": null
+    },
+    {
+      "acl": "{postgres=arwdDxtm/postgres,service_role=rxtm/postgres}",
+      "oid": "17713",
+      "rls": true,
+      "nome": "mart_motoristas_coligadas",
+      "tipo": "r",
+      "opcoes": null,
+      "definicao_view": null
+    },
+    {
+      "acl": "{postgres=arwdDxtm/postgres,service_role=rxtm/postgres}",
+      "oid": "17746",
+      "rls": true,
+      "nome": "mart_motoristas_pendencias_condutor",
+      "tipo": "r",
+      "opcoes": null,
+      "definicao_view": null
+    },
+    {
+      "acl": "{postgres=arwdDxtm/postgres,service_role=rxtm/postgres}",
+      "oid": "17779",
+      "rls": true,
+      "nome": "mart_motoristas_ranking_seguranca",
+      "tipo": "r",
+      "opcoes": null,
+      "definicao_view": null
+    },
+    {
+      "acl": "{postgres=arwdDxtm/postgres,service_role=rxtm/postgres}",
+      "oid": "17768",
+      "rls": true,
+      "nome": "mart_motoristas_ranking_uso",
+      "tipo": "r",
+      "opcoes": null,
+      "definicao_view": null
+    },
+    {
+      "acl": "{postgres=arwdDxtm/postgres,service_role=rxtm/postgres}",
+      "oid": "17702",
+      "rls": true,
+      "nome": "mart_motoristas_resumo",
+      "tipo": "r",
+      "opcoes": null,
+      "definicao_view": null
+    },
+    {
+      "acl": "{postgres=arwdDxtm/postgres,service_role=rxtm/postgres}",
+      "oid": "17757",
+      "rls": true,
+      "nome": "mart_motoristas_seguranca",
+      "tipo": "r",
+      "opcoes": null,
+      "definicao_view": null
+    },
+    {
+      "acl": "{postgres=arwdDxtm/postgres,service_role=rxtm/postgres}",
+      "oid": "17735",
+      "rls": true,
+      "nome": "mart_motoristas_uso_setor",
+      "tipo": "r",
+      "opcoes": null,
+      "definicao_view": null
+    },
+    {
+      "acl": "{postgres=arwdDxtm/postgres,service_role=rxtm/postgres}",
+      "oid": "17724",
+      "rls": true,
+      "nome": "mart_motoristas_viagens",
+      "tipo": "r",
+      "opcoes": null,
+      "definicao_view": null
+    },
+    {
+      "acl": "{postgres=arwdDxtm/postgres,service_role=rxtm/postgres}",
+      "oid": "18016",
+      "rls": true,
+      "nome": "mart_planos_acao",
+      "tipo": "r",
+      "opcoes": null,
+      "definicao_view": null
+    },
+    {
+      "acl": "{postgres=arwdDxtm/postgres,service_role=ar/postgres}",
+      "oid": "17629",
+      "rls": true,
+      "nome": "stg_backfill_motoristas_viagens_sso",
+      "tipo": "r",
+      "opcoes": null,
+      "definicao_view": null
+    },
+    {
+      "acl": "{postgres=arwdDxtm/postgres,service_role=ardDxtm/postgres}",
+      "oid": "17866",
+      "rls": true,
+      "nome": "stg_eventos_velocidade_sso",
+      "tipo": "r",
+      "opcoes": null,
+      "definicao_view": null
+    },
+    {
+      "acl": "{postgres=arwdDxtm/postgres,service_role=ardxtm/postgres}",
+      "oid": "17900",
+      "rls": true,
+      "nome": "stg_mart_acoes_corretivas",
+      "tipo": "r",
+      "opcoes": null,
+      "definicao_view": null
+    },
+    {
+      "acl": "{postgres=arwdDxtm/postgres,service_role=ardxtm/postgres}",
+      "oid": "18006",
+      "rls": true,
+      "nome": "stg_mart_avcb",
+      "tipo": "r",
+      "opcoes": null,
+      "definicao_view": null
+    },
+    {
+      "acl": "{postgres=arwdDxtm/postgres,service_role=ardxtm/postgres}",
+      "oid": "17986",
+      "rls": true,
+      "nome": "stg_mart_inspecoes",
+      "tipo": "r",
+      "opcoes": null,
+      "definicao_view": null
+    },
+    {
+      "acl": "{postgres=arwdDxtm/postgres,service_role=ardDxtm/postgres}",
+      "oid": "17696",
+      "rls": true,
+      "nome": "stg_mart_motoristas",
+      "tipo": "r",
+      "opcoes": null,
+      "definicao_view": null
+    },
+    {
+      "acl": "{postgres=arwdDxtm/postgres,service_role=ardDxtm/postgres}",
+      "oid": "17718",
+      "rls": true,
+      "nome": "stg_mart_motoristas_coligadas",
+      "tipo": "r",
+      "opcoes": null,
+      "definicao_view": null
+    },
+    {
+      "acl": "{postgres=arwdDxtm/postgres,service_role=ardDxtm/postgres}",
+      "oid": "17751",
+      "rls": true,
+      "nome": "stg_mart_motoristas_pendencias_condutor",
+      "tipo": "r",
+      "opcoes": null,
+      "definicao_view": null
+    },
+    {
+      "acl": "{postgres=arwdDxtm/postgres,service_role=ardDxtm/postgres}",
+      "oid": "17784",
+      "rls": true,
+      "nome": "stg_mart_motoristas_ranking_seguranca",
+      "tipo": "r",
+      "opcoes": null,
+      "definicao_view": null
+    },
+    {
+      "acl": "{postgres=arwdDxtm/postgres,service_role=ardDxtm/postgres}",
+      "oid": "17773",
+      "rls": true,
+      "nome": "stg_mart_motoristas_ranking_uso",
+      "tipo": "r",
+      "opcoes": null,
+      "definicao_view": null
+    },
+    {
+      "acl": "{postgres=arwdDxtm/postgres,service_role=ardDxtm/postgres}",
+      "oid": "17707",
+      "rls": true,
+      "nome": "stg_mart_motoristas_resumo",
+      "tipo": "r",
+      "opcoes": null,
+      "definicao_view": null
+    },
+    {
+      "acl": "{postgres=arwdDxtm/postgres,service_role=ardDxtm/postgres}",
+      "oid": "17762",
+      "rls": true,
+      "nome": "stg_mart_motoristas_seguranca",
+      "tipo": "r",
+      "opcoes": null,
+      "definicao_view": null
+    },
+    {
+      "acl": "{postgres=arwdDxtm/postgres,service_role=ardDxtm/postgres}",
+      "oid": "17740",
+      "rls": true,
+      "nome": "stg_mart_motoristas_uso_setor",
+      "tipo": "r",
+      "opcoes": null,
+      "definicao_view": null
+    },
+    {
+      "acl": "{postgres=arwdDxtm/postgres,service_role=ardDxtm/postgres}",
+      "oid": "17729",
+      "rls": true,
+      "nome": "stg_mart_motoristas_viagens",
+      "tipo": "r",
+      "opcoes": null,
+      "definicao_view": null
+    },
+    {
+      "acl": "{postgres=arwdDxtm/postgres,service_role=ardxtm/postgres}",
+      "oid": "18030",
+      "rls": true,
+      "nome": "stg_mart_planos_acao",
+      "tipo": "r",
+      "opcoes": null,
+      "definicao_view": null
+    },
+    {
+      "acl": "{postgres=arwdDxtm/postgres,service_role=rDxtm/postgres}",
+      "oid": "17814",
+      "rls": false,
+      "nome": "vw_motoristas_direcao_4h",
+      "tipo": "v",
+      "opcoes": [
+        "security_invoker=true"
+      ],
+      "definicao_view": "7821b5d45f17eeaaa760876da256c2b7"
+    },
+    {
+      "acl": "{postgres=arwdDxtm/postgres,service_role=rDxtm/postgres}",
+      "oid": "17926",
+      "rls": false,
+      "nome": "vw_portal_acoes_corretivas",
+      "tipo": "v",
+      "opcoes": null,
+      "definicao_view": "c7aec4287b3b54965dd9c586772168a5"
+    },
+    {
+      "acl": "{postgres=arwdDxtm/postgres,service_role=rDxtm/postgres}",
+      "oid": "18053",
+      "rls": false,
+      "nome": "vw_portal_planos_acao",
+      "tipo": "v",
+      "opcoes": null,
+      "definicao_view": "2c13959422ddd994a83c3f0504eddc0c"
+    }
+  ],
+  "rotinas_operacionais": [
+    {
+      "acl": "{postgres=X/postgres,service_role=X/postgres}",
+      "nome": "promover_backfill_motoristas_viagens_sso",
+      "definicao": "cac924ce4d272e360540ab5da7afe0bf",
+      "argumentos": "p_carga_id uuid, p_quantidade integer, p_total_inicial integer"
+    },
+    {
+      "acl": "{postgres=X/postgres,service_role=X/postgres}",
+      "nome": "promover_eventos_velocidade_sso",
+      "definicao": "164a53013a3419b4d16198e13ad8ddb8",
+      "argumentos": "p_carga_id uuid, p_quantidade integer"
+    },
+    {
+      "acl": "{postgres=X/postgres,service_role=X/postgres}",
+      "nome": "promover_mart_acoes_corretivas",
+      "definicao": "1548de9508a2214af193314c4c3af0a6",
+      "argumentos": "p_carga_id uuid, p_quantidade_esperada integer"
+    },
+    {
+      "acl": "{postgres=X/postgres,service_role=X/postgres}",
+      "nome": "promover_mart_avcb",
+      "definicao": "612f9b6022f301af189bf63e01751644",
+      "argumentos": "p_carga_id uuid, p_quantidade_esperada integer"
+    },
+    {
+      "acl": "{postgres=X/postgres,service_role=X/postgres}",
+      "nome": "promover_mart_inspecoes",
+      "definicao": "440244d9c7641230a5106d2573625fe6",
+      "argumentos": "p_carga_id uuid, p_quantidade_esperada integer"
+    },
+    {
+      "acl": "{postgres=X/postgres,service_role=X/postgres}",
+      "nome": "promover_mart_motoristas",
+      "definicao": "08d9a624ba1ceb69ff3a784bd7d999ad",
+      "argumentos": "p_carga_motoristas uuid, p_quantidades jsonb"
+    },
+    {
+      "acl": "{postgres=X/postgres,service_role=X/postgres}",
+      "nome": "promover_mart_planos_acao",
+      "definicao": "12697ab5a02a24aa1758a0098e650caa",
+      "argumentos": "p_carga_id uuid, p_quantidade_esperada integer"
+    }
+  ],
+  "schemas_api_confirmados": false
+}

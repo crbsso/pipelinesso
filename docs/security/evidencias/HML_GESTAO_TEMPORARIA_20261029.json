@@ -1,0 +1,38 @@
+{
+  "project_id": "ckfsarzmudwdehiiltwi",
+  "concessao": {
+    "perfil": "administracao_acessos_hml",
+    "fim_utc": "2026-10-30T18:43:20.625+00:00",
+    "ambiente": "homologacao",
+    "inicio_utc": "2026-10-29T18:43:20.625+00:00",
+    "papel_base": "USUARIO",
+    "capacidades": [
+      "permissoes.gerenciar",
+      "solicitacoes_acesso.gerenciar",
+      "usuarios.gerenciar"
+    ],
+    "duracao_horas": 24,
+    "identidade_ativa": true,
+    "concessoes_de_dados": 0,
+    "auditorias_da_concessao": 5,
+    "administradores_legados_ativos": 1
+  },
+  "verificacao_contexto": "RPC em transacao com identidade/papel simulados; rollback; nao substitui login HTTP",
+  "verificacao_helper": {
+    "contexto_valido": true,
+    "duracao_horas": 24,
+    "gestoes_permitidas": 3,
+    "fronteiras_verificadas": 12,
+    "consultas_negadas": 8
+  },
+  "validacao_navegador": {
+    "verificado_em": "2026-10-29 18:47:21.187547+00",
+    "ultimo_login": "2026-10-29 18:46:38.302239+00",
+    "papel_base": "USUARIO",
+    "atribuicao_ativa": true,
+    "abrangencias": 3,
+    "concessoes_de_dados": 0,
+    "resultado": "Validação concluída: todas as verificações passaram.",
+    "origem": "confirmacao textual do usuario; ultimo login e configuracao conferidos no Supabase; controle da aba indisponivel"
+  }
+}

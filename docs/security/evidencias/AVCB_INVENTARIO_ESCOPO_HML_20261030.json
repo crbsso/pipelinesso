@@ -1,0 +1,106 @@
+{
+  "project_id": "ckfsarzmudwdehiiltwi",
+  "somente_leitura": true,
+  "inventario": {
+    "conferido_em": "2026-10-30 16:41:20.852487+00",
+    "registros": 63,
+    "projetos": 16,
+    "subestacoes": 60,
+    "valores_instalacao": 2,
+    "chaves_vazias": 0,
+    "combinacoes_nativas": 63,
+    "catalogo_projetos": [
+      {
+        "projeto": "BTE",
+        "registros": 9,
+        "subestacoes": 9
+      },
+      {
+        "projeto": "CANTE",
+        "registros": 2,
+        "subestacoes": 2
+      },
+      {
+        "projeto": "CPTE",
+        "registros": 4,
+        "subestacoes": 4
+      },
+      {
+        "projeto": "CRB",
+        "registros": 1,
+        "subestacoes": 1
+      },
+      {
+        "projeto": "CRTE",
+        "registros": 8,
+        "subestacoes": 8
+      },
+      {
+        "projeto": "CTE",
+        "registros": 3,
+        "subestacoes": 3
+      },
+      {
+        "projeto": "ENTE",
+        "registros": 2,
+        "subestacoes": 2
+      },
+      {
+        "projeto": "IMTE",
+        "registros": 2,
+        "subestacoes": 2
+      },
+      {
+        "projeto": "JTE",
+        "registros": 7,
+        "subestacoes": 7
+      },
+      {
+        "projeto": "LTC",
+        "registros": 2,
+        "subestacoes": 2
+      },
+      {
+        "projeto": "PATE",
+        "registros": 3,
+        "subestacoes": 3
+      },
+      {
+        "projeto": "PTE",
+        "registros": 1,
+        "subestacoes": 1
+      },
+      {
+        "projeto": "PTE 6",
+        "registros": 3,
+        "subestacoes": 3
+      },
+      {
+        "projeto": "SITE",
+        "registros": 10,
+        "subestacoes": 10
+      },
+      {
+        "projeto": "SJP",
+        "registros": 2,
+        "subestacoes": 2
+      },
+      {
+        "projeto": "VCTE",
+        "registros": 4,
+        "subestacoes": 4
+      }
+    ],
+    "catalogo_instalacao": [
+      {
+        "registros": 41,
+        "instalacao": "Acessante"
+      },
+      {
+        "registros": 22,
+        "instalacao": "Própria"
+      }
+    ],
+    "nomes_subestacao_em_mais_de_um_projeto": 3
+  }
+}

@@ -1,7 +1,6 @@
+import { autorizarConsulta } from "@/lib/auth/abasServidor";
 ﻿import { NextRequest, NextResponse } from "next/server";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
-import { createClient as createServerClient } from "@/lib/supabase/server";
-
 export const dynamic = "force-dynamic";
 
 const HEADERS = { "Cache-Control": "private, no-store" };
@@ -730,19 +729,8 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const auth = await createServerClient();
-
-  const {
-    data: { user },
-    error: erroUsuario,
-  } = await auth.auth.getUser();
-
-  if (erroUsuario || !user) {
-    return NextResponse.json(
-      { error: "Nao autorizado." },
-      { status: 401, headers: HEADERS },
-    );
-  }
+  const negacao = await autorizarConsulta("motoristas_velocidade");
+  if (negacao) return negacao;
 
   try {
     const parametros = request.nextUrl.searchParams;

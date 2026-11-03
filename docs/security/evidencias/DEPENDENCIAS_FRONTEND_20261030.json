@@ -1,0 +1,318 @@
+{
+  "data_referencia": "2026-10-30",
+  "branch": "feat/portal-sso-permissoes-20261029",
+  "escopo": "atualizacao pontual autorizada, somente nesta worktree",
+  "instaladas": {
+    "next": "16.4.1",
+    "eslint-config-next": "16.4.1",
+    "postcss": "8.5.23"
+  },
+  "versoes_anteriores": {
+    "next": "16.1.6",
+    "eslint-config-next": "16.0.7",
+    "postcss": "8.5.6"
+  },
+  "outras_dependencias_diretas_alteradas": [],
+  "auditoria_antes": {
+    "low": 4,
+    "moderate": 3,
+    "high": 13,
+    "critical": 1,
+    "total": 21
+  },
+  "auditoria_depois": {
+    "info": 0,
+    "low": 4,
+    "moderate": 2,
+    "high": 9,
+    "critical": 0,
+    "total": 15
+  },
+  "validacao": {
+    "testes": 75,
+    "aprovados": 75,
+    "typescript": true,
+    "eslint_integracao": true,
+    "build_webpack": true
+  },
+  "compatibilidade": {
+    "arquivo": "frontend/src/components/gestao/GestaoSolicitacoes.tsx",
+    "mudanca": "consulta compartilhada; sem atualizacao sincrona de estado no efeito; contagens mantidas no servidor",
+    "teste": "frontend/tests/gestaoTelas.test.mjs: renderizacao da pagina e contagens globais"
+  },
+  "backup": {
+    "pasta": ".cache/atualizacao-dependencias-20261029",
+    "arquivos": [
+      {
+        "arquivo": "frontend/package.json",
+        "sha256": "008b657927633bc399835d08070fc8538bc8681e251202f932b2e352a20d02f1"
+      },
+      {
+        "arquivo": "frontend/package-lock.json",
+        "sha256": "c0eb836c1baebfeef030d4c9485553929541fa4a505fa128cc75d4a811d7e5d8"
+      }
+    ],
+    "integridade_conferida": true
+  },
+  "alertas_restantes": [
+    {
+      "nome": "@babel/core",
+      "gravidade": "low",
+      "direto": false,
+      "avisos": [
+        {
+          "titulo": "@babel/core: Arbitrary File Read via sourceMappingURL Comment",
+          "url": "https://github.com/advisories/GHSA-4x5r-pxfx-6jf8",
+          "gravidade": "low"
+        }
+      ]
+    },
+    {
+      "nome": "@babel/plugin-transform-modules-systemjs",
+      "gravidade": "high",
+      "direto": false,
+      "avisos": [
+        {
+          "titulo": "@babel/plugin-transform-modules-systemjs generates arbitrary code when compiling malicious input",
+          "url": "https://github.com/advisories/GHSA-fv7c-fp4j-7gwp",
+          "gravidade": "high"
+        }
+      ]
+    },
+    {
+      "nome": "@humanfs/node",
+      "gravidade": "moderate",
+      "direto": false,
+      "avisos": [
+        {
+          "titulo": "humanfs: Recursive copy follows symlinked files and copies data from outside the source tree",
+          "url": "https://github.com/advisories/GHSA-p498-v437-472g",
+          "gravidade": "moderate"
+        }
+      ]
+    },
+    {
+      "nome": "@svgr/plugin-svgo",
+      "gravidade": "low",
+      "direto": false,
+      "avisos": [
+        "deepmerge"
+      ]
+    },
+    {
+      "nome": "@svgr/webpack",
+      "gravidade": "low",
+      "direto": true,
+      "avisos": [
+        "@svgr/plugin-svgo"
+      ]
+    },
+    {
+      "nome": "ajv",
+      "gravidade": "moderate",
+      "direto": false,
+      "avisos": [
+        {
+          "titulo": "ajv has ReDoS when using `$data` option",
+          "url": "https://github.com/advisories/GHSA-2g4f-4pwh-qvx6",
+          "gravidade": "moderate"
+        }
+      ]
+    },
+    {
+      "nome": "brace-expansion",
+      "gravidade": "high",
+      "direto": false,
+      "avisos": [
+        {
+          "titulo": "brace-expansion: Zero-step sequence causes process hang and memory exhaustion",
+          "url": "https://github.com/advisories/GHSA-f886-m6hf-6m8v",
+          "gravidade": "moderate"
+        },
+        {
+          "titulo": "brace-expansion: DoS via exponential-time expansion of consecutive non-expanding {} groups",
+          "url": "https://github.com/advisories/GHSA-3jxr-9vmj-r5cp",
+          "gravidade": "high"
+        },
+        {
+          "titulo": "brace-expansion: DoS via unbounded expansion length causing an out-of-memory process crash",
+          "url": "https://github.com/advisories/GHSA-mh99-v99m-4gvg",
+          "gravidade": "high"
+        },
+        {
+          "titulo": "brace-expansion: DoS via unbounded intermediate arrays, bypassing the CVE-2026-14257 mitigation",
+          "url": "https://github.com/advisories/GHSA-rgw5-rvv9-x895",
+          "gravidade": "high"
+        },
+        {
+          "titulo": "brace-expansion: Quadratic-time expansion of the `{a},b}` rewrite causes CPU denial of service",
+          "url": "https://github.com/advisories/GHSA-q2hr-2g5m-vwhr",
+          "gravidade": "moderate"
+        },
+        {
+          "titulo": "brace-expansion: DoS via uncontrolled recursion on nested brace groups causing stack exhaustion",
+          "url": "https://github.com/advisories/GHSA-qhr7-859c-m2p7",
+          "gravidade": "high"
+        },
+        {
+          "titulo": "brace-expansion: DoS via uncontrolled recursion in parseCommaParts causing stack exhaustion",
+          "url": "https://github.com/advisories/GHSA-6j4f-fj2g-mc7p",
+          "gravidade": "high"
+        }
+      ]
+    },
+    {
+      "nome": "browserslist",
+      "gravidade": "high",
+      "direto": false,
+      "avisos": [
+        {
+          "titulo": "Browserslist: Unbounded memory growth (no cache eviction) via distinct query results, leading to eventual OOM",
+          "url": "https://github.com/advisories/GHSA-c83g-rgw3-j3cx",
+          "gravidade": "high"
+        },
+        {
+          "titulo": "Browserslist: Uncaught crash / prototype write via untrusted browserslist-stats.json custom stats (normalizeStats)",
+          "url": "https://github.com/advisories/GHSA-73wf-gq98-2v4g",
+          "gravidade": "high"
+        }
+      ]
+    },
+    {
+      "nome": "deepmerge",
+      "gravidade": "low",
+      "direto": false,
+      "avisos": [
+        {
+          "titulo": "deepmerge mergeObject() allows prototype poisoning of returned objects",
+          "url": "https://github.com/advisories/GHSA-gcqx-w48m-w2h4",
+          "gravidade": "low"
+        }
+      ]
+    },
+    {
+      "nome": "flatted",
+      "gravidade": "high",
+      "direto": false,
+      "avisos": [
+        {
+          "titulo": "flatted vulnerable to unbounded recursion DoS in parse() revive phase",
+          "url": "https://github.com/advisories/GHSA-25h7-pfq9-p65f",
+          "gravidade": "high"
+        },
+        {
+          "titulo": "Prototype Pollution via parse() in NodeJS flatted",
+          "url": "https://github.com/advisories/GHSA-rf6f-7fwh-wjgh",
+          "gravidade": "high"
+        }
+      ]
+    },
+    {
+      "nome": "js-yaml",
+      "gravidade": "high",
+      "direto": false,
+      "avisos": [
+        {
+          "titulo": "JS-YAML: Quadratic-complexity DoS in merge key handling via repeated aliases",
+          "url": "https://github.com/advisories/GHSA-h67p-54hq-rp68",
+          "gravidade": "moderate"
+        },
+        {
+          "titulo": "js-yaml: YAML merge-key chains can force quadratic CPU consumption",
+          "url": "https://github.com/advisories/GHSA-52cp-r559-cp3m",
+          "gravidade": "high"
+        },
+        {
+          "titulo": "JS-YAML: Quadratic CPU consumption in !!omap resolution (3.x and 4.x) — CVE-2026-59870 fix not backported",
+          "url": "https://github.com/advisories/GHSA-5p4m-2wfm-xmqj",
+          "gravidade": "high"
+        },
+        {
+          "titulo": "js-yaml: maxTotalMergeKeys does not limit CPU use for empty merge sources",
+          "url": "https://github.com/advisories/GHSA-2883-xcg3-v3hh",
+          "gravidade": "high"
+        }
+      ]
+    },
+    {
+      "nome": "minimatch",
+      "gravidade": "high",
+      "direto": false,
+      "avisos": [
+        {
+          "titulo": "minimatch has a ReDoS via repeated wildcards with non-matching literal in pattern",
+          "url": "https://github.com/advisories/GHSA-3ppc-4f35-3m26",
+          "gravidade": "high"
+        },
+        {
+          "titulo": "minimatch has ReDoS: matchOne() combinatorial backtracking via multiple non-adjacent GLOBSTAR segments",
+          "url": "https://github.com/advisories/GHSA-7r86-cg39-jmmj",
+          "gravidade": "high"
+        },
+        {
+          "titulo": "minimatch ReDoS: nested *() extglobs generate catastrophically backtracking regular expressions",
+          "url": "https://github.com/advisories/GHSA-23c5-xmqv-rm74",
+          "gravidade": "high"
+        }
+      ]
+    },
+    {
+      "nome": "picomatch",
+      "gravidade": "high",
+      "direto": false,
+      "avisos": [
+        {
+          "titulo": "Picomatch: Method Injection in POSIX Character Classes causes incorrect Glob Matching",
+          "url": "https://github.com/advisories/GHSA-3v7f-55p6-f55p",
+          "gravidade": "moderate"
+        },
+        {
+          "titulo": "Picomatch has a ReDoS vulnerability via extglob quantifiers",
+          "url": "https://github.com/advisories/GHSA-c2c7-rcm5-vvqj",
+          "gravidade": "high"
+        }
+      ]
+    },
+    {
+      "nome": "source-map-js",
+      "gravidade": "high",
+      "direto": false,
+      "avisos": [
+        {
+          "titulo": "source-map-js allows event-loop denial of service through indexed source-map section offsets",
+          "url": "https://github.com/advisories/GHSA-68fv-2mgg-jv7q",
+          "gravidade": "high"
+        }
+      ]
+    },
+    {
+      "nome": "svgo",
+      "gravidade": "high",
+      "direto": false,
+      "avisos": [
+        {
+          "titulo": "SVGO DoS through entity expansion in DOCTYPE (Billion Laughs)",
+          "url": "https://github.com/advisories/GHSA-xpqw-6gx7-v673",
+          "gravidade": "high"
+        },
+        {
+          "titulo": "SVGO removeScripts plugin leaves some executable scripts intact",
+          "url": "https://github.com/advisories/GHSA-2p49-hgcm-8545",
+          "gravidade": "high"
+        },
+        {
+          "titulo": "SVGO: removeScripts incompletely sanitizes executable HTML in SVG foreignObject elements",
+          "url": "https://github.com/advisories/GHSA-4vpr-x523-8j87",
+          "gravidade": "moderate"
+        },
+        {
+          "titulo": "SVGO: removeScripts allows executable links through namespace and control-character bypasses",
+          "url": "https://github.com/advisories/GHSA-w27v-7q3p-w38r",
+          "gravidade": "high"
+        }
+      ]
+    }
+  ],
+  "migrations_remotas_aplicadas_nesta_etapa": false,
+  "publicacao": false
+}
