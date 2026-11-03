@@ -9,6 +9,7 @@ import React, {
 
 import Image from "next/image";
 import Link from "next/link";
+import { rotaPermitida, type AbasPermitidas } from "@/lib/auth/acessoAbas";
 import { usePathname } from "next/navigation";
 import { useSidebar } from "../context/SidebarContext";
 
@@ -18,7 +19,6 @@ import {
   GridIcon,
   HorizontaLDots,
   PageIcon,
-  PlugInIcon,
   UserCircleIcon,
 } from "../icons/index";
 
@@ -113,11 +113,6 @@ const othersItems: NavItem[] = [
     name: "Permissões",
     path: "/gestao/permissoes",
   },
-  {
-    icon: <PlugInIcon />,
-    name: "Configurações",
-    path: "/gestao/configuracoes",
-  },
 ];
 
 const AppSidebar: React.FC = () => {
@@ -129,11 +124,31 @@ const AppSidebar: React.FC = () => {
   } = useSidebar();
 
   const pathname = usePathname();
+  const [abas, setAbas] = useState<AbasPermitidas>({});
+  useEffect(()=>{
+    const controle=new AbortController();
+    const carregar=()=>fetch('/api/acesso/abas',{cache:'no-store',signal:controle.signal})
+      .then(async resposta=>resposta.ok?await resposta.json():{})
+      .then((valor:AbasPermitidas)=>{if(!controle.signal.aborted)setAbas(valor);})
+      .catch(()=>{if(!controle.signal.aborted)setAbas({});});
+    void carregar();
+    window.addEventListener('focus',carregar);
+    return ()=>{controle.abort();window.removeEventListener('focus',carregar);};
+  },[pathname]);
+  const itensConsulta=navItems.map(item=>({...item,subItems:item.subItems?.filter(sub=>rotaPermitida(sub.path,abas))})).filter(item=>item.subItems?.length);
+  const itensGestao=othersItems.filter(item=>rotaPermitida(item.path??'',abas));
 
-  const [openSubmenu, setOpenSubmenu] = useState<{
-    type: "main" | "others";
-    index: number;
-  } | null>(null);
+  type Submenu = { type: "main" | "others"; index: number };
+  const [menuManual, setMenuManual] = useState<{rota:string;submenu:Submenu|null}|null>(null);
+  const menuDaRota:Submenu|null = (() => {
+    for (const tipo of ["main","others"] as const) {
+      const indice=(tipo==="main"?itensConsulta:itensGestao).findIndex(nav=>nav.subItems?.some(item=>item.path===pathname));
+      if(indice>=0)return {type:tipo,index:indice};
+    }
+    return null;
+  })();
+  const openSubmenu=menuManual?.rota===pathname?menuManual.submenu:menuDaRota;
+  const chaveSubmenu=openSubmenu?openSubmenu.type+"-"+openSubmenu.index:null;
 
   const [subMenuHeight, setSubMenuHeight] = useState<
     Record<string, number>
@@ -149,68 +164,17 @@ const AppSidebar: React.FC = () => {
   );
 
   useEffect(() => {
-    let submenuMatched = false;
-
-    ["main", "others"].forEach((menuType) => {
-      const items =
-        menuType === "main"
-          ? navItems
-          : othersItems;
-
-      items.forEach((nav, index) => {
-        if (!nav.subItems) return;
-
-        nav.subItems.forEach((subItem) => {
-          if (isActive(subItem.path)) {
-            setOpenSubmenu({
-              type: menuType as "main" | "others",
-              index,
-            });
-
-            submenuMatched = true;
-          }
-        });
-      });
-    });
-
-    if (!submenuMatched) {
-      setOpenSubmenu(null);
+    if(!chaveSubmenu)return;
+    const elemento=subMenuRefs.current[chaveSubmenu];
+    if(elemento){
+      const altura=elemento.scrollHeight;
+      setSubMenuHeight(anterior=>anterior[chaveSubmenu]===altura?anterior:{...anterior,[chaveSubmenu]:altura});
     }
-  }, [pathname, isActive]);
+  },[chaveSubmenu]);
 
-  useEffect(() => {
-    if (openSubmenu === null) return;
-
-    const key =
-      `${openSubmenu.type}-${openSubmenu.index}`;
-
-    if (subMenuRefs.current[key]) {
-      setSubMenuHeight((prevHeights) => ({
-        ...prevHeights,
-        [key]:
-          subMenuRefs.current[key]?.scrollHeight || 0,
-      }));
-    }
-  }, [openSubmenu]);
-
-  const handleSubmenuToggle = (
-    index: number,
-    menuType: "main" | "others",
-  ) => {
-    setOpenSubmenu((prevOpenSubmenu) => {
-      if (
-        prevOpenSubmenu &&
-        prevOpenSubmenu.type === menuType &&
-        prevOpenSubmenu.index === index
-      ) {
-        return null;
-      }
-
-      return {
-        type: menuType,
-        index,
-      };
-    });
+  const handleSubmenuToggle = (index:number, menuType:"main"|"others") => {
+    setMenuManual({rota:pathname,submenu:openSubmenu?.type===menuType&&openSubmenu.index===index
+      ?null:{type:menuType,index}});
   };
 
   const renderMenuItems = (
@@ -436,7 +400,7 @@ const AppSidebar: React.FC = () => {
               </h2>
 
               {renderMenuItems(
-                navItems,
+                itensConsulta,
                 "main",
               )}
             </div>
@@ -459,7 +423,7 @@ const AppSidebar: React.FC = () => {
               </h2>
 
               {renderMenuItems(
-                othersItems,
+                itensGestao,
                 "others",
               )}
             </div>

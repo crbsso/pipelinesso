@@ -1,0 +1,15 @@
+-- Somente leitura. Conferencia dos testes administrativos autorizados em HML.
+select now() as conferido_em,
+(select count(*) from auth.users) contas_auth,
+(select count(*) from auth.users where email in ('hml-aprovacao-20261030@example.invalid','hml-rejeicao-20261030@example.invalid')) contas_auth_ficticias,
+(select count(*) from portal_acesso.atribuicoes) atribuicoes_total,
+(select count(*) from portal_acesso.auditoria) auditorias_total,
+(select jsonb_agg(to_jsonb(s) order by s.email_corporativo) from public.solicitacoes_acesso s where s.id in ('7612bda0-d61c-4f92-95ab-61c0c32c7b3c','72f63d8e-6d12-4198-9e69-26d37428bda5')) solicitacoes_teste,
+(select jsonb_agg(jsonb_build_object('id',a.id,'user_id',a.user_id,'perfil_id',a.perfil_id,'ativo',a.ativo,'inicio',a.inicio,'fim',a.fim)) from portal_acesso.atribuicoes a where a.id in ('e71f72a2-e1dc-4520-8b7c-1c0c756dc251','06720c89-ec3f-4b59-b392-aa1051032f82')) concessoes_originais,
+(select to_jsonb(a) from portal_acesso.atribuicoes a where a.id='e3b15468-6d22-4f4e-a682-4f597a523d50') concessao_teste,
+(select jsonb_agg(to_jsonb(b)) from portal_acesso.abrangencias b where b.atribuicao_id='e3b15468-6d22-4f4e-a682-4f597a523d50') abrangencias_teste,
+(select portal_acesso.perfil_json('e6706ce6-a7fa-4f23-a51b-cdd3d3ccafdb')) perfil_teste,
+(select portal_acesso.perfil_json('46bb9be5-6f0f-4a21-82a5-2884bbebfcc8')) perfil_administrativo,
+(select jsonb_agg(jsonb_build_object('user_id',i.user_id,'papel',i.papel,'ativo',i.ativo)) from public.perfis_portal i) identidades_portal,
+(select jsonb_agg(to_jsonb(e) order by e.ocorrido_em,e.id) from portal_acesso.auditoria e where e.ocorrido_em>'2026-10-30T14:34:50.793813Z') auditoria_desta_etapa,
+portal_acesso.ha_administrador_permanente() administrador_permanente_preservado;

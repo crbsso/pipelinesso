@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="pt-BR">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Portal SSO — Teste de acesso em homologação</title><link rel="stylesheet" href="/estilo.css"><script defer src="/sdk.js"></script><script type="module" src="/teste.js"></script></head>
+<body><main>
+<p class="selo">Portal SSO · Homologação</p>
+<h1>Validar seu acesso</h1>
+<p>Esta tela local testa o login e as regras preparadas para homologação. Ela não altera suas permissões e não consulta os dados dos painéis.</p>
+<p class="ambiente">Ambiente: <strong>pipelinesso-homologacao</strong><br><span>ckfsarzmudwdehiiltwi.supabase.co</span></p>
+<p id="cenario" class="ajuda"></p>
+<section id="testes-sessao" aria-labelledby="titulo-sessao">
+<h2 id="titulo-sessao">Teste de revogação</h2>
+<p id="instrucao-sessao">Entre abaixo para habilitar os botões do teste.</p>
+<button id="testar-bloqueio" type="button" disabled>1. Verificar bloqueio sem sair</button>
+<button id="testar-reativacao" type="button" disabled>2. Verificar reativação sem sair</button>
+<p class="ajuda">Use o botão indicado quando eu avisar. Durante o teste, mantenha esta aba aberta sem atualizar ou fazer outro login.</p>
+</section>
+<form id="login"><label for="email">E-mail</label><input id="email" type="email" autocomplete="off" value="seguranca@celeogroup.com" required><label for="senha">Senha da conta de homologação</label><input id="senha" type="password" autocomplete="current-password" required><p class="ajuda">A senha é enviada diretamente ao Supabase de homologação. Esta ferramenta não grava a senha nem mantém a sessão após recarregar a página.</p><button id="entrar" type="submit" disabled>Entrar e validar</button></form>
+<button id="abrir-recuperacao" type="button">Esqueci a senha de homologação</button>
+<section id="recuperacao" hidden aria-labelledby="titulo-recuperacao">
+<h2 id="titulo-recuperacao">Recuperar a senha de homologação</h2>
+<p>O e-mail será enviado pelo Supabase de homologação para a conta indicada acima. Esta solicitação não modifica sua senha de produção.</p>
+<button id="enviar-recuperacao" type="button">Enviar e-mail de recuperação</button>
+<form id="validar-recuperacao" hidden>
+<p>Abra o e-mail de recuperação. <strong>Sem abrir o link</strong>, copie o endereço do botão de redefinição e cole no campo abaixo. O link é de uso único: use-o somente nesta tela, nunca na conversa.</p>
+<label for="link-recuperacao">Link de recuperação recebido por e-mail</label>
+<input id="link-recuperacao" type="password" autocomplete="off" required>
+<button type="submit">Validar recuperação</button>
+</form>
+<form id="nova-senha" hidden>
+<label for="senha-nova">Nova senha de homologação</label>
+<input id="senha-nova" type="password" autocomplete="new-password" minlength="12" required>
+<label for="confirmar-senha">Confirme a nova senha</label>
+<input id="confirmar-senha" type="password" autocomplete="new-password" minlength="12" required>
+<p class="ajuda">Use pelo menos 12 caracteres. A nova senha será enviada diretamente ao Supabase de homologação.</p>
+<button type="submit">Salvar nova senha de homologação</button>
+</form>
+</section>
+<p id="estado" role="status" aria-live="polite">Preparando a tela…</p>
+<section aria-labelledby="titulo-resultados"><h2 id="titulo-resultados">Resultado das verificações</h2><ul id="resultados"></ul></section>
+<button id="sair" type="button" hidden>Encerrar sessão de teste</button>
+<p class="rodape">O resultado se limita a esta tela de validação. A integração com os painéis do portal será realizada em uma etapa posterior.</p>
+</main></body></html>

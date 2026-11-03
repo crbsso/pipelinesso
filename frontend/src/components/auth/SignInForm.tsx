@@ -48,7 +48,7 @@ export default function SignInForm() {
         return;
       }
 
-      router.replace("/consultas/painel-gerencial/avcb");
+      router.replace("/");
       router.refresh();
     } catch (error) {
       console.error("Erro inesperado no login:", error);

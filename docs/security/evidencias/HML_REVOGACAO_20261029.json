@@ -1,0 +1,109 @@
+{
+  "project_id": "ckfsarzmudwdehiiltwi",
+  "estado": "teste de revogacao concluido; atribuicao ativa, vencimento original e zero consultas concedidas",
+  "ciclos": [
+    {
+      "numero": 1,
+      "project_id": "ckfsarzmudwdehiiltwi",
+      "estado": "primeira tentativa inconclusiva; atribuicao reativada com prazo original; tela corrigida para reiniciar o teste",
+      "autorizacao": "suspender, validar bloqueio sem logout e reativar preservando prazo original; autorizacao permanece vigente",
+      "baseline": {
+        "verificado_em": "2026-10-29 19:05:19.31574+00",
+        "ultimo_login": "2026-10-29 19:04:55.196382+00",
+        "administradores_legados_ativos": 1,
+        "auditorias": 14
+      },
+      "apos_suspensao": {
+        "atribuicao_ativa": false,
+        "identidade_ativa": true,
+        "papel_base": "USUARIO",
+        "inicio": "2026-10-29 18:43:20.625+00",
+        "fim": "2026-10-30 18:43:20.625+00",
+        "abrangencias": 3,
+        "concessoes_de_dados": 0
+      },
+      "resultado_visual_bloqueio": "nao observado: painel permanecia oculto porque a ligacao entre login e preparacao da sessao nao foi inserida",
+      "reativacao": {
+        "executada": true,
+        "verificacao": {
+          "verificado_em": "2026-10-29 19:13:47.754989+00",
+          "ultimo_login": "2026-10-29 19:04:55.196382+00",
+          "atribuicao_ativa": true,
+          "inicio": "2026-10-29 18:43:20.625+00",
+          "fim": "2026-10-30 18:43:20.625+00",
+          "auditorias": 16,
+          "administradores_legados_ativos": 1
+        },
+        "resultado": "atribuicao ativa; inicio e fim preservados; duas operacoes auditadas"
+      },
+      "testes_locais": {
+        "total": 50,
+        "aprovados": 50
+      },
+      "sessao": "token apenas em memoria da aba; nao coletado pelo agente nem armazenado no servidor",
+      "correcao_tela": "painel permanente no topo, botoes desabilitados ate login e validacao, referencia de sessao ligada ao login e teste de integracao da tela",
+      "proxima_acao": "usuario atualizar pagina e entrar na tela corrigida; confirmar botoes visiveis e habilitados antes de nova suspensao ja autorizada"
+    },
+    {
+      "numero": 2,
+      "estado": "concluido; bloqueio e reativacao aprovados na mesma sessao",
+      "baseline": {
+        "verificado_em": "2026-10-29 19:17:08.001498+00",
+        "ultimo_login": "2026-10-29 19:16:08.120846+00",
+        "atribuicao_ativa": true,
+        "identidade_ativa": true,
+        "papel": "USUARIO",
+        "inicio": "2026-10-29 18:43:20.625+00",
+        "fim": "2026-10-30 18:43:20.625+00",
+        "codigo": "administracao_acessos_hml",
+        "auditorias": 16,
+        "administradores_legados_ativos": 1
+      },
+      "apos_suspensao": {
+        "atribuicao_ativa": false,
+        "identidade_ativa": true,
+        "papel_base": "USUARIO",
+        "inicio": "2026-10-29 18:43:20.625+00",
+        "fim": "2026-10-30 18:43:20.625+00",
+        "abrangencias": 3,
+        "concessoes_de_dados": 0
+      },
+      "resultado_bloqueio": {
+        "mensagem": "Bloqueio confirmado: todas as verificacoes passaram, sem novo login.",
+        "origem": "confirmacao textual do usuario apos suspensao"
+      },
+      "resultado_reativacao": {
+        "mensagem": "Reativacao confirmada: todas as verificacoes passaram, sem novo login.",
+        "origem": "confirmacao textual do usuario apos reativacao"
+      },
+      "nenhuma_nova_senha_ou_token_coletado": true,
+      "verificacao_final": {
+        "verificado_em": "2026-10-29 19:22:11.907488+00",
+        "ultimo_login": "2026-10-29 19:16:08.120846+00",
+        "atribuicao_ativa": true,
+        "identidade_ativa": true,
+        "papel": "USUARIO",
+        "inicio": "2026-10-29 18:43:20.625+00",
+        "fim": "2026-10-30 18:43:20.625+00",
+        "abrangencias": 3,
+        "concessoes_de_dados": 0,
+        "administradores_legados_ativos": 1,
+        "auditorias": 18,
+        "eventos_do_ciclo": [
+          {
+            "ativo": false,
+            "operacao": "UPDATE",
+            "ocorrido_em": "2026-10-29T19:17:12.297106+00:00"
+          },
+          {
+            "ativo": true,
+            "operacao": "UPDATE",
+            "ocorrido_em": "2026-10-29T19:20:24.337581+00:00"
+          }
+        ]
+      },
+      "mesmo_ultimo_login": true,
+      "prazo_preservado": true
+    }
+  ]
+}

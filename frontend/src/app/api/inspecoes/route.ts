@@ -1,28 +1,11 @@
+import { autorizarConsulta } from "@/lib/auth/abasServidor";
 ﻿import { NextResponse } from "next/server";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
-import { createClient as createServerClient } from "@/lib/supabase/server";
-
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const authSupabase = await createServerClient();
-
-  const { data: claimsData, error: claimsError } =
-    await authSupabase.auth.getClaims();
-
-  if (claimsError || !claimsData?.claims) {
-    return NextResponse.json(
-      {
-        error: "Não autorizado.",
-      },
-      {
-        status: 401,
-        headers: {
-          "Cache-Control": "private, no-store",
-        },
-      },
-    );
-  }
+  const negacao = await autorizarConsulta("inspecoes");
+  if (negacao) return negacao;
 
   const supabaseUrl = process.env.SUPABASE_URL;
   const supabaseSecretKey =

@@ -1,0 +1,134 @@
+{
+  "data": "2026-10-30",
+  "ambiente": "pipelinesso-homologacao",
+  "project_id": "ckfsarzmudwdehiiltwi",
+  "candidato_codigo": "2971511ec69eeb5ed5ee85e5a118e43f5f9572da",
+  "conta_ator": "seguranca@celeogroup.com",
+  "estado": "criacao, edicao de descricao e desativacao do perfil vazio validadas pela interface e auditoria",
+  "criacao": {
+    "confirmacao_usuario": "Perfil salvo e auditado",
+    "conferido_em": "2026-10-30 12:26:56.865478+00",
+    "perfil": {
+      "id": "e6706ce6-a7fa-4f23-a51b-cdd3d3ccafdb",
+      "nome": "Homologacao_teste_31.10.26",
+      "ativo": true,
+      "codigo": "perfil_69e96801efb1468194df36955a836b3d",
+      "descricao": "Teste",
+      "historico": [
+        {
+          "id": "85a30de1-cab3-4f24-ad18-318f8ed935c1",
+          "antes": null,
+          "autor": "seguranca@celeogroup.com",
+          "depois": {
+            "id": "e6706ce6-a7fa-4f23-a51b-cdd3d3ccafdb",
+            "nome": "Homologacao_teste_31.10.26",
+            "ativo": true,
+            "codigo": "perfil_69e96801efb1468194df36955a836b3d",
+            "criado_em": "2026-10-30T12:26:17.33526+00:00",
+            "descricao": "Teste",
+            "atualizado_em": "2026-10-30T12:26:17.33526+00:00"
+          },
+          "autor_id": "6b08a067-e510-4356-85a0-91982b0d9353",
+          "operacao": "INSERT",
+          "ocorrido_em": "2026-10-30T12:26:17.342906+00:00"
+        }
+      ],
+      "atribuicoes": 0,
+      "capacidades": 0
+    },
+    "auditorias_antes": 18,
+    "auditorias_depois": 19
+  },
+  "edicao": {
+    "validada": true,
+    "conferido_em": "2026-10-30 12:31:56.085739+00",
+    "registro": {
+      "id": "9a988048-241d-4242-ab29-5fad02e72a27",
+      "antes": {
+        "id": "e6706ce6-a7fa-4f23-a51b-cdd3d3ccafdb",
+        "nome": "Homologacao_teste_31.10.26",
+        "ativo": true,
+        "codigo": "perfil_69e96801efb1468194df36955a836b3d",
+        "criado_em": "2026-10-30T12:26:17.33526+00:00",
+        "descricao": "Teste",
+        "atualizado_em": "2026-10-30T12:26:17.33526+00:00"
+      },
+      "autor": "seguranca@celeogroup.com",
+      "depois": {
+        "id": "e6706ce6-a7fa-4f23-a51b-cdd3d3ccafdb",
+        "nome": "Homologacao_teste_31.10.26",
+        "ativo": true,
+        "codigo": "perfil_69e96801efb1468194df36955a836b3d",
+        "criado_em": "2026-10-30T12:26:17.33526+00:00",
+        "descricao": "Teste de edição validado",
+        "atualizado_em": "2026-10-30T12:30:57.389056+00:00"
+      },
+      "autor_id": "6b08a067-e510-4356-85a0-91982b0d9353",
+      "operacao": "UPDATE",
+      "ocorrido_em": "2026-10-30T12:30:57.389612+00:00"
+    }
+  },
+  "desativacao": {
+    "validada": true,
+    "conferido_em": "2026-10-30 12:31:56.085739+00",
+    "registro": {
+      "id": "7b002848-f99a-4e96-8e0f-8c05683d68b7",
+      "antes": {
+        "id": "e6706ce6-a7fa-4f23-a51b-cdd3d3ccafdb",
+        "nome": "Homologacao_teste_31.10.26",
+        "ativo": true,
+        "codigo": "perfil_69e96801efb1468194df36955a836b3d",
+        "criado_em": "2026-10-30T12:26:17.33526+00:00",
+        "descricao": "Teste de edição validado",
+        "atualizado_em": "2026-10-30T12:30:57.389056+00:00"
+      },
+      "autor": "seguranca@celeogroup.com",
+      "depois": {
+        "id": "e6706ce6-a7fa-4f23-a51b-cdd3d3ccafdb",
+        "nome": "Homologacao_teste_31.10.26",
+        "ativo": false,
+        "codigo": "perfil_69e96801efb1468194df36955a836b3d",
+        "criado_em": "2026-10-30T12:26:17.33526+00:00",
+        "descricao": "Teste de edição validado",
+        "atualizado_em": "2026-10-30T12:31:38.356653+00:00"
+      },
+      "autor_id": "6b08a067-e510-4356-85a0-91982b0d9353",
+      "operacao": "UPDATE",
+      "ocorrido_em": "2026-10-30T12:31:38.3568+00:00"
+    }
+  },
+  "concorrencia_real": {
+    "validada": true,
+    "escopo": "Trava global e conflito de versao entre uma manutencao SQL e uma RPC authenticated pela interface, em perfil inativo sem capacidades nem atribuicoes.",
+    "evidencia": "CONCORRENCIA_GESTAO_20261030.json"
+  },
+  "alteracao_real_pela_interface": true,
+  "estado_final": {
+    "id": "e6706ce6-a7fa-4f23-a51b-cdd3d3ccafdb",
+    "nome": "Homologacao_teste_31.10.26",
+    "descricao": "Teste de edição validado",
+    "ativo": false,
+    "capacidades": 0,
+    "atribuicoes": 0,
+    "auditorias_total": 21,
+    "administrador_permanente_preservado": true,
+    "perfil_administrativo": {
+      "ativo": true,
+      "atribuicoes": 2,
+      "capacidades": 3
+    }
+  },
+  "limites": [
+    "Valida salvar_perfil com perfil vazio; nao valida concessoes ou analise de solicitacoes pela interface.",
+    "Concorrencia SQL/interface do perfil vazio confirmada; ver evidencia especifica para o alcance.",
+    "Perfil de teste permanece inativo, sem capacidades e sem atribuicoes; historico preservado."
+  ],
+  "estado_apos_concorrencia": {
+    "id": "e6706ce6-a7fa-4f23-a51b-cdd3d3ccafdb",
+    "descricao": "Teste de concorrência — versão preservada",
+    "ativo": false,
+    "capacidades": 0,
+    "atribuicoes": 0,
+    "auditorias_total": 22
+  }
+}

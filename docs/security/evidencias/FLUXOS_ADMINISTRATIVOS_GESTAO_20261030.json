@@ -1,0 +1,454 @@
+{
+  "data": "2026-10-30",
+  "ambiente": "pipelinesso-homologacao",
+  "project_id": "ckfsarzmudwdehiiltwi",
+  "estado": "Cenarios administrativos desta rodada aprovados; nao encerra o permissionamento completo",
+  "codigo_testado": "2971511ec69eeb5ed5ee85e5a118e43f5f9572da",
+  "executor": "agente pela interface autenticada IAB",
+  "ator": "6b08a067-e510-4356-85a0-91982b0d9353",
+  "email_ator": "seguranca@celeogroup.com",
+  "baseline": {
+    "conferido_em": "2026-10-30 14:34:50.793813+00",
+    "auditorias": 22,
+    "contas_auth": 2,
+    "atribuicoes": [
+      {
+        "id": "e71f72a2-e1dc-4520-8b7c-1c0c756dc251",
+        "fim": null,
+        "ativo": true,
+        "inicio": null,
+        "user_id": "9025f8aa-817d-4a63-b8b6-b3f29c7a5876",
+        "vigente": true,
+        "perfil_id": "46bb9be5-6f0f-4a21-82a5-2884bbebfcc8"
+      },
+      {
+        "id": "06720c89-ec3f-4b59-b392-aa1051032f82",
+        "fim": "2026-10-30T18:43:20.625+00:00",
+        "ativo": true,
+        "inicio": "2026-10-29T18:43:20.625+00:00",
+        "user_id": "6b08a067-e510-4356-85a0-91982b0d9353",
+        "vigente": true,
+        "perfil_id": "46bb9be5-6f0f-4a21-82a5-2884bbebfcc8"
+      }
+    ]
+  },
+  "concessao_criada": {
+    "conferido_em": "2026-10-30 14:45:40.626378+00",
+    "id": "e3b15468-6d22-4f4e-a682-4f597a523d50",
+    "user_id": "6b08a067-e510-4356-85a0-91982b0d9353",
+    "perfil_id": "e6706ce6-a7fa-4f23-a51b-cdd3d3ccafdb",
+    "ativo": true,
+    "inicio": null,
+    "fim": "2026-10-30 17:00:00+00",
+    "prazo_seguro": true,
+    "abrangencias": [
+      {
+        "acao": "gerenciar",
+        "tipo": "corporativa",
+        "modulo": "solicitacoes_acesso",
+        "unidades": []
+      }
+    ],
+    "auditorias": 26
+  },
+  "concessao_editada": {
+    "conferido_em": "2026-10-30 14:47:01.004251+00",
+    "id": "e3b15468-6d22-4f4e-a682-4f597a523d50",
+    "user_id": "6b08a067-e510-4356-85a0-91982b0d9353",
+    "perfil_id": "e6706ce6-a7fa-4f23-a51b-cdd3d3ccafdb",
+    "ativo": true,
+    "inicio": "2026-10-30 14:00:00+00",
+    "fim": "2026-10-30 16:45:00+00",
+    "auditorias": 29
+  },
+  "estados_observados": [
+    true,
+    true,
+    false,
+    true,
+    false,
+    true,
+    false
+  ],
+  "conferencia_final": {
+    "conferido_em": "2026-10-30 14:54:35.399167+00",
+    "contas_auth": 2,
+    "contas_auth_ficticias": 0,
+    "atribuicoes_total": 3,
+    "auditorias_total": 38,
+    "concessao_teste": {
+      "id": "e3b15468-6d22-4f4e-a682-4f597a523d50",
+      "fim": "2026-10-30T16:45:00+00:00",
+      "ativo": false,
+      "inicio": "2026-10-30T14:00:00+00:00",
+      "user_id": "6b08a067-e510-4356-85a0-91982b0d9353",
+      "criado_em": "2026-10-30T14:45:07.04205+00:00",
+      "perfil_id": "e6706ce6-a7fa-4f23-a51b-cdd3d3ccafdb",
+      "atualizado_em": "2026-10-30T14:48:39.079462+00:00"
+    },
+    "perfil_teste": {
+      "id": "e6706ce6-a7fa-4f23-a51b-cdd3d3ccafdb",
+      "nome": "Homologacao_teste_31.10.26",
+      "ativo": false,
+      "capacidades": [
+        {
+          "acao": "gerenciar",
+          "ativo": false,
+          "modulo": "solicitacoes_acesso"
+        }
+      ]
+    },
+    "solicitacoes_teste": [
+      {
+        "id": "7612bda0-d61c-4f92-95ab-61c0c32c7b3c",
+        "email": "hml-aprovacao-20261030@example.invalid",
+        "status": "APROVADO",
+        "analisado_por": "6b08a067-e510-4356-85a0-91982b0d9353",
+        "analisado_em": "2026-10-30T14:50:47.227864+00:00",
+        "observacao": "HML: aprovação fictícia validada. Não provisionar conta nem conceder acesso."
+      },
+      {
+        "id": "72f63d8e-6d12-4198-9e69-26d37428bda5",
+        "email": "hml-rejeicao-20261030@example.invalid",
+        "status": "REJEITADO",
+        "analisado_por": "6b08a067-e510-4356-85a0-91982b0d9353",
+        "analisado_em": "2026-10-30T14:51:03.586042+00:00",
+        "observacao": "HML: rejeição fictícia validada; nenhuma conta ou concessão deve ser criada."
+      }
+    ],
+    "originais_preservadas": true,
+    "administrador_permanente_preservado": true
+  },
+  "auditoria": {
+    "autor_unico": "6b08a067-e510-4356-85a0-91982b0d9353",
+    "papel": "authenticated",
+    "sessao": "authenticator",
+    "eventos": [
+      {
+        "id": "bb52da8c-57e1-4adb-93a8-ee81e98a4851",
+        "ocorrido_em": "2026-10-30T14:38:20.801519+00:00",
+        "entidade": "portal_acesso.perfis",
+        "operacao": "UPDATE",
+        "alvo": "e6706ce6-a7fa-4f23-a51b-cdd3d3ccafdb",
+        "antes": {
+          "ativo": false,
+          "descricao": "Teste de concorrência — versão preservada"
+        },
+        "depois": {
+          "ativo": true,
+          "descricao": "HML — Teste de concessão temporária redundante"
+        }
+      },
+      {
+        "id": "e1a0fc58-45e0-4023-8179-0d2ed88cfbc8",
+        "ocorrido_em": "2026-10-30T14:38:20.802733+00:00",
+        "entidade": "portal_acesso.permissoes_perfil",
+        "operacao": "INSERT",
+        "alvo": "773e3132-a0a6-4a40-ad65-65acd8004ec8",
+        "antes": null,
+        "depois": {
+          "ativo": true,
+          "modulo": "solicitacoes_acesso",
+          "acao": "gerenciar"
+        }
+      },
+      {
+        "id": "30f899fa-fa53-451c-af8d-3a4c363ae4d3",
+        "ocorrido_em": "2026-10-30T14:45:07.053036+00:00",
+        "entidade": "portal_acesso.atribuicoes",
+        "operacao": "INSERT",
+        "alvo": "e3b15468-6d22-4f4e-a682-4f597a523d50",
+        "antes": null,
+        "depois": {
+          "ativo": true,
+          "inicio": null,
+          "fim": "2026-10-30T17:00:00+00:00"
+        }
+      },
+      {
+        "id": "13a7e536-692e-4614-a124-2fdb20a782f2",
+        "ocorrido_em": "2026-10-30T14:45:07.05442+00:00",
+        "entidade": "portal_acesso.abrangencias",
+        "operacao": "INSERT",
+        "alvo": "1131944b-6ae2-49d2-a112-0ee07f480d94",
+        "antes": null,
+        "depois": {
+          "modulo": "solicitacoes_acesso",
+          "acao": "gerenciar",
+          "tipo": "corporativa",
+          "unidades": []
+        }
+      },
+      {
+        "id": "46a9ca24-d64b-4848-89ce-654cb1ffd2a0",
+        "ocorrido_em": "2026-10-30T14:46:47.919337+00:00",
+        "entidade": "portal_acesso.atribuicoes",
+        "operacao": "UPDATE",
+        "alvo": "e3b15468-6d22-4f4e-a682-4f597a523d50",
+        "antes": {
+          "ativo": true,
+          "inicio": null,
+          "fim": "2026-10-30T17:00:00+00:00"
+        },
+        "depois": {
+          "ativo": true,
+          "inicio": "2026-10-30T14:00:00+00:00",
+          "fim": "2026-10-30T16:45:00+00:00"
+        }
+      },
+      {
+        "id": "f67f502c-ac5f-4b49-b93f-6cfe6af7862f",
+        "ocorrido_em": "2026-10-30T14:46:47.919901+00:00",
+        "entidade": "portal_acesso.abrangencias",
+        "operacao": "DELETE",
+        "alvo": "1131944b-6ae2-49d2-a112-0ee07f480d94",
+        "antes": {
+          "modulo": "solicitacoes_acesso",
+          "acao": "gerenciar",
+          "tipo": "corporativa",
+          "unidades": []
+        },
+        "depois": null
+      },
+      {
+        "id": "d7a15290-04df-4870-8538-21f42e0e17b9",
+        "ocorrido_em": "2026-10-30T14:46:47.920824+00:00",
+        "entidade": "portal_acesso.abrangencias",
+        "operacao": "INSERT",
+        "alvo": "b6001e2e-535e-4c79-b090-1cde1ef67798",
+        "antes": null,
+        "depois": {
+          "modulo": "solicitacoes_acesso",
+          "acao": "gerenciar",
+          "tipo": "corporativa",
+          "unidades": []
+        }
+      },
+      {
+        "id": "d0227b21-8e31-4f38-ae44-a380903645c8",
+        "ocorrido_em": "2026-10-30T14:47:53.527202+00:00",
+        "entidade": "portal_acesso.atribuicoes",
+        "operacao": "UPDATE",
+        "alvo": "e3b15468-6d22-4f4e-a682-4f597a523d50",
+        "antes": {
+          "ativo": true,
+          "inicio": "2026-10-30T14:00:00+00:00",
+          "fim": "2026-10-30T16:45:00+00:00"
+        },
+        "depois": {
+          "ativo": false,
+          "inicio": "2026-10-30T14:00:00+00:00",
+          "fim": "2026-10-30T16:45:00+00:00"
+        }
+      },
+      {
+        "id": "8f524822-5794-4701-a8cc-71978d52b53d",
+        "ocorrido_em": "2026-10-30T14:48:02.542073+00:00",
+        "entidade": "portal_acesso.atribuicoes",
+        "operacao": "UPDATE",
+        "alvo": "e3b15468-6d22-4f4e-a682-4f597a523d50",
+        "antes": {
+          "ativo": false,
+          "inicio": "2026-10-30T14:00:00+00:00",
+          "fim": "2026-10-30T16:45:00+00:00"
+        },
+        "depois": {
+          "ativo": true,
+          "inicio": "2026-10-30T14:00:00+00:00",
+          "fim": "2026-10-30T16:45:00+00:00"
+        }
+      },
+      {
+        "id": "b98dfb06-40c1-41c3-9fee-168c1c2e8579",
+        "ocorrido_em": "2026-10-30T14:48:09.299724+00:00",
+        "entidade": "portal_acesso.atribuicoes",
+        "operacao": "UPDATE",
+        "alvo": "e3b15468-6d22-4f4e-a682-4f597a523d50",
+        "antes": {
+          "ativo": true,
+          "inicio": "2026-10-30T14:00:00+00:00",
+          "fim": "2026-10-30T16:45:00+00:00"
+        },
+        "depois": {
+          "ativo": false,
+          "inicio": "2026-10-30T14:00:00+00:00",
+          "fim": "2026-10-30T16:45:00+00:00"
+        }
+      },
+      {
+        "id": "34a59e55-c0e6-4858-9f76-a6c8a2b0ae5c",
+        "ocorrido_em": "2026-10-30T14:48:10.123372+00:00",
+        "entidade": "portal_acesso.atribuicoes",
+        "operacao": "UPDATE",
+        "alvo": "e3b15468-6d22-4f4e-a682-4f597a523d50",
+        "antes": {
+          "ativo": false,
+          "inicio": "2026-10-30T14:00:00+00:00",
+          "fim": "2026-10-30T16:45:00+00:00"
+        },
+        "depois": {
+          "ativo": true,
+          "inicio": "2026-10-30T14:00:00+00:00",
+          "fim": "2026-10-30T16:45:00+00:00"
+        }
+      },
+      {
+        "id": "17758f40-4bb5-42c6-855b-92bb9720d580",
+        "ocorrido_em": "2026-10-30T14:48:39.079592+00:00",
+        "entidade": "portal_acesso.atribuicoes",
+        "operacao": "UPDATE",
+        "alvo": "e3b15468-6d22-4f4e-a682-4f597a523d50",
+        "antes": {
+          "ativo": true,
+          "inicio": "2026-10-30T14:00:00+00:00",
+          "fim": "2026-10-30T16:45:00+00:00"
+        },
+        "depois": {
+          "ativo": false,
+          "inicio": "2026-10-30T14:00:00+00:00",
+          "fim": "2026-10-30T16:45:00+00:00"
+        }
+      },
+      {
+        "id": "32bfa809-cea2-45fc-995d-987b62ce5e2f",
+        "ocorrido_em": "2026-10-30T14:49:52.280503+00:00",
+        "entidade": "portal_acesso.perfis",
+        "operacao": "UPDATE",
+        "alvo": "e6706ce6-a7fa-4f23-a51b-cdd3d3ccafdb",
+        "antes": {
+          "ativo": true,
+          "descricao": "HML — Teste de concessão temporária redundante"
+        },
+        "depois": {
+          "ativo": false,
+          "descricao": "HML — Fluxos administrativos validados; perfil inativo"
+        }
+      },
+      {
+        "id": "34ae0146-2588-472f-b633-f4525fc1cd29",
+        "ocorrido_em": "2026-10-30T14:49:52.281301+00:00",
+        "entidade": "portal_acesso.permissoes_perfil",
+        "operacao": "UPDATE",
+        "alvo": "773e3132-a0a6-4a40-ad65-65acd8004ec8",
+        "antes": {
+          "ativo": true,
+          "modulo": "solicitacoes_acesso",
+          "acao": "gerenciar"
+        },
+        "depois": {
+          "ativo": false,
+          "modulo": "solicitacoes_acesso",
+          "acao": "gerenciar"
+        }
+      },
+      {
+        "id": "86f29c26-f922-4b73-ba3d-fb41c1639c11",
+        "ocorrido_em": "2026-10-30T14:50:47.228282+00:00",
+        "entidade": "public.solicitacoes_acesso",
+        "operacao": "UPDATE",
+        "alvo": "7612bda0-d61c-4f92-95ab-61c0c32c7b3c",
+        "antes": {
+          "status": "PENDENTE"
+        },
+        "depois": {
+          "status": "APROVADO",
+          "analisado_por": "6b08a067-e510-4356-85a0-91982b0d9353"
+        }
+      },
+      {
+        "id": "96f5295e-a73f-4b4e-a417-76554336ce5b",
+        "ocorrido_em": "2026-10-30T14:51:03.58625+00:00",
+        "entidade": "public.solicitacoes_acesso",
+        "operacao": "UPDATE",
+        "alvo": "72f63d8e-6d12-4198-9e69-26d37428bda5",
+        "antes": {
+          "status": "PENDENTE"
+        },
+        "depois": {
+          "status": "REJEITADO",
+          "analisado_por": "6b08a067-e510-4356-85a0-91982b0d9353"
+        }
+      }
+    ]
+  },
+  "checks": {
+    "criacao_concessao": true,
+    "edicao_inicio_fim": true,
+    "suspensao_reativacao": true,
+    "limite_do_acesso_original_preservado": true,
+    "aprovacao": true,
+    "rejeicao": true,
+    "autoria_real_16_eventos": true,
+    "sem_provisionamento_auth": true,
+    "sem_concessao_automatica_pela_analise": true,
+    "originais_preservadas": true,
+    "ultimo_admin_preservado": true,
+    "teste_final_inativo": true
+  },
+  "filtros_interface": [
+    {
+      "filtro": "APROVADO",
+      "aprovada": 1,
+      "rejeitada": 0
+    },
+    {
+      "filtro": "REJEITADO",
+      "aprovada": 0,
+      "rejeitada": 1
+    },
+    {
+      "filtro": "PENDENTE",
+      "resultados": 0
+    },
+    {
+      "filtro": "empresa e busca",
+      "aprovada": 1,
+      "rejeitada": 0
+    },
+    {
+      "filtro": "TODOS restaurado",
+      "resultados": 2,
+      "contagens": {
+        "pendentes": 0,
+        "aprovadas": 1,
+        "rejeitadas": 1,
+        "total": 2
+      }
+    }
+  ],
+  "botoes_nova_analise_apos_processamento": {
+    "aprovado": {
+      "aprovar": 0,
+      "rejeitar": 0
+    },
+    "rejeitado": {
+      "aprovar": 0,
+      "rejeitar": 0
+    }
+  },
+  "limites": [
+    "Concessao corporativa de capacidade administrativa ja existente; nao amplia acesso ou prazo da conta.",
+    "A suspensao desta concessao redundante nao bloqueia a conta; a negacao na mesma sessao foi testada separadamente na etapa anterior.",
+    "Solicitacoes foram inseridas como fixtures SQL; formulario publico de envio nao foi testado aqui.",
+    "Abrangencias de consulta por unidade, matriz real de negocio, isolamento dos paineis e producao continuam pendentes.",
+    "Nenhum codigo de aplicacao, dependencia, migration, Auth ou credencial foi alterado. Suite de 78 testes permanece a ultima validacao registrada; nao foi repetida para alteracoes apenas de dados/documentacao."
+  ],
+  "imagens": [
+    {
+      "arquivo": "docs/security/evidencias/imagens/FLUXOS_CONCESSAO_GESTAO_20261030.jpg",
+      "sha256": "bfeefe7e320512e88c7d309d0d67d9892f3962ac756d3c5130eb562d9ddeb6d4"
+    },
+    {
+      "arquivo": "docs/security/evidencias/imagens/FLUXOS_SOLICITACOES_GESTAO_20261030.jpg",
+      "sha256": "4088ae06afdf23c98096c47a676eac7ff2b3a92b4daf0dba163145572bd257cf"
+    },
+    {
+      "arquivo": "docs/security/evidencias/imagens/FLUXOS_APROVACAO_GESTAO_20261030.jpg",
+      "sha256": "315f748b256cb0e82e2ff05dd18a374f7e47f336e40aba985691a33152276651"
+    },
+    {
+      "arquivo": "docs/security/evidencias/imagens/FLUXOS_REJEICAO_GESTAO_20261030.jpg",
+      "sha256": "92efa197c421311ac6403e34fa80e0058087b13f4b860e974f8d416ecad649d9"
+    }
+  ]
+}

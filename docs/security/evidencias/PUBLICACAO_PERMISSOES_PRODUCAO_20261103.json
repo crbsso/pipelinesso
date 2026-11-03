@@ -1,0 +1,83 @@
+{
+  "data": "2026-11-03",
+  "site": "https://portal-ssovercelapp.vercel.app",
+  "vercel": {
+    "equipe": "seguranca-celeo",
+    "projeto": "portal-sso.vercel.app",
+    "id": "prj_lXKkcgDPfHWdqaxRbuTAaXpgsGAs",
+    "producaoAntes": "189c8dd3e75b890e1a9f579395eb0818e851e390",
+    "origemConfigurada": "https://portal-ssovercelapp.vercel.app",
+    "ambienteOrigem": "production",
+    "previaInicial": "8uFB3reC7A8ZVZbvqB9EzG46yn6f"
+  },
+  "git": {
+    "branch": "release/portal-sso-permissoes-20261103",
+    "base": "189c8dd3e75b890e1a9f579395eb0818e851e390",
+    "origemHomologada": "d7967c017b1a7aeacd28fa473fd91d1d32fd5e1c",
+    "commitCodigo": "fab4b86de9faadf5d9ea8995226abcb5deb30310",
+    "frontendIdentico": true,
+    "backendIncluido": false,
+    "batIncluido": false,
+    "prReservadoAoUsuario": true,
+    "mergeReservadoAoUsuario": true
+  },
+  "supabase": {
+    "projeto": "lkhidajhsqgebjltyicb",
+    "migrations": [
+      {
+        "local": "20261029161856",
+        "producao": "20261103120926",
+        "nome": "preparar_gestao_acesso_portal"
+      },
+      {
+        "local": "20261029162052",
+        "producao": "20261103120929",
+        "nome": "criar_permissionamento_portal"
+      },
+      {
+        "local": "20261030103220",
+        "producao": "20261103120957",
+        "nome": "integrar_gestao_acessos_portal"
+      },
+      {
+        "local": "20261103110106",
+        "producao": "20261103121006",
+        "nome": "herdar_permissoes_do_perfil"
+      }
+    ],
+    "administradoraExistente": "seguranca@celeogroup.com",
+    "capacidades": [
+      "usuarios.gerenciar",
+      "permissoes.gerenciar",
+      "solicitacoes_acesso.gerenciar"
+    ],
+    "permanente": true,
+    "herdarPerfil": true,
+    "consultasConcedidas": 0,
+    "contasAuthAntes": 2,
+    "contasAuthDepois": 2,
+    "solicitacoesAntes": 3,
+    "solicitacoesDepois": 3,
+    "hashesAntesEDepois": {
+      "relacoesPublicasOperacionais": "d0fe08707fb8f8a67df5940c90f287ed",
+      "funcoesPublicasAnteriores": "21a4e3eef46b5a1dc24ca16f290a9146",
+      "dadosIdentidades": "a92510059dd75939ee076260fd9db184"
+    },
+    "anonPodeExecutarRPCs": false
+  },
+  "validacao": {
+    "suiteAnterior": 104,
+    "bootstrapProducaoEmBancoDescartavel": true,
+    "rpcAdministrativaComJWTLocalSimulado": true,
+    "previaCompilada": true,
+    "previaSemSessaoRetornaErroSemDados": true,
+    "loginManualAdicionalDispensadoPeloUsuario": true,
+    "novosAvisosDeSeguranca": 0,
+    "avisosPreexistentes": [
+      "function_search_path_mutable",
+      "anon_security_definer_function_executable",
+      "authenticated_security_definer_function_executable",
+      "auth_leaked_password_protection"
+    ]
+  }
+}
