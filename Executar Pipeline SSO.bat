@@ -116,7 +116,7 @@ echo LOG: %BAT_LOG%
 echo ============================================================
 echo.
 
-powershell.exe -NoProfile -Command "& { try { if ($env:BAT_MODO -eq '--teste-hml') { & $env:BAT_PYTHON -u $env:BAT_SCRIPT --teste-hml 2>&1 | Tee-Object -FilePath $env:BAT_LOG -Append -ErrorAction Stop } else { & $env:BAT_PYTHON -u $env:BAT_SCRIPT 2>&1 | Tee-Object -FilePath $env:BAT_LOG -Append -ErrorAction Stop }; if ($null -eq $LASTEXITCODE) { exit 90 }; exit $LASTEXITCODE } catch { Write-Host 'ERRO: registro de log ou execucao falhou.'; exit 90 } }"
+"%BAT_PYTHON%" -u "%PROJETO%\backend\executar_pipeline_sso_console.py"
 
 set "CODIGO_ERRO=%ERRORLEVEL%"
 
