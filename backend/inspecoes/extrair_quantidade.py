@@ -193,6 +193,7 @@ def garantir_login(page):
 
     contexto = page.context
     prazo = time.monotonic() + 180
+    tentativas_inicio = set()
 
     while time.monotonic() < prazo:
         # Considera a aba inicial e as abas abertas pelo login federado.
@@ -213,10 +214,52 @@ def garantir_login(page):
                 if caminho in ("", "/login") or caminho.startswith("/login/"):
                     continue
                 _, menu = localizar_texto(aba, "Reporte 360", exact=False)
-                if menu is None or not menu.is_visible():
-                    continue
-                print("Sessao autenticada confirmada:", atual.hostname + atual.path)
-                return aba
+
+                if menu is not None and menu.is_visible():
+                    print("Sessao autenticada confirmada:", atual.hostname + atual.path)
+                    return aba
+
+                # Tenta abrir Inicio uma unica vez por aba interna.
+                # A tela de login e a raiz nao autorizam esta acao.
+                chave_aba = id(aba)
+                if chave_aba not in tentativas_inicio:
+                    padrao_inicio = re.compile(
+                        r"^\s*In[i\u00ed]cio\s*$",
+                        re.IGNORECASE,
+                    )
+
+                    acionou_inicio = False
+
+                    for frame in frames_da_pagina(aba):
+                        for papel in ("link", "button"):
+                            try:
+                                candidatos = frame.get_by_role(
+                                    papel,
+                                    name=padrao_inicio,
+                                )
+                                for indice in range(min(candidatos.count(), 10)):
+                                    candidato = candidatos.nth(indice)
+                                    if candidato.is_visible():
+                                        candidato.click(timeout=10000)
+                                        acionou_inicio = True
+                                        break
+                            except Exception as erro:
+                                print(
+                                    "Aviso ao localizar Inicio:",
+                                    type(erro).__name__,
+                                )
+                            if acionou_inicio:
+                                break
+
+                        if acionou_inicio:
+                            break
+
+                    if acionou_inicio:
+                        tentativas_inicio.add(chave_aba)
+                        print(
+                            "Inicio acionado automaticamente; "
+                            "aguardando menu Reporte 360."
+                        )
             except Exception:
                 continue
 
