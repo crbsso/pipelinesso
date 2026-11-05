@@ -243,49 +243,101 @@ def garantir_login(page):
 # =========================================================
 
 def abrir_reporte_360(page):
+    """Abre o menu lateral ou a rota confirmada, somente apos login."""
+    from urllib.parse import urlsplit, parse_qs
 
-    print("Procurando Reporte 360...")
-
-    _, locator = aguardar_texto(
-        page,
-        "Reporte 360",
-        timeout=60000,
-        exact=False,
+    destino = (
+        "https://celeo.prevsis.com/KPI/VistaKPI"
+        "?Modulo=191&NmGrupo=Reporte%20360.."
     )
 
-    print("Reporte 360 visivel encontrado.")
+    def conferir_sessao():
+        atual = urlsplit(page.url)
+        if (
+            atual.scheme != "https"
+            or atual.hostname != "celeo.prevsis.com"
+            or atual.path.lower().startswith("/login")
+            or atual.path in ("", "/")
+        ):
+            raise RuntimeError(
+                "PrevSys: sessao interna nao confirmada. "
+                "Navegacao bloqueada."
+            )
 
-    locator.scroll_into_view_if_needed()
+    conferir_sessao()
+    print("Procurando link lateral Reporte 360...")
 
-    locator.click(
-        timeout=15000,
+    clicou = False
+
+    for frame in frames_da_pagina(page):
+        try:
+            links = frame.get_by_role(
+                "link",
+                name=re.compile(r"Reporte\s*360", re.IGNORECASE),
+            )
+
+            for indice in range(min(links.count(), 10)):
+                link = links.nth(indice)
+                if not link.is_visible():
+                    continue
+
+                link.click(timeout=10000)
+                clicou = True
+                print("Link lateral Reporte 360 acionado.")
+                break
+
+        except Exception as erro:
+            print(
+                "Aviso na navegacao lateral:",
+                type(erro).__name__,
+            )
+
+        if clicou:
+            break
+
+    padrao_url = re.compile(
+        r"^https://celeo\.prevsis\.com/KPI/VistaKPI(?:[?#].*)?$",
+        re.IGNORECASE,
     )
 
-    print(
-        "Reporte 360 acionado. "
-        "Aguardando pagina do relatorio..."
-    )
+    if clicou:
+        try:
+            page.wait_for_url(padrao_url, timeout=15000)
+        except PlaywrightTimeoutError:
+            print("Clique nao confirmou a navegacao; avaliando fallback.")
+
+    if urlsplit(page.url).path.lower() != "/kpi/vistakpi":
+        conferir_sessao()
+        print("Abrindo rota autenticada confirmada do Reporte 360.")
+        page.goto(
+            destino,
+            wait_until="domcontentloaded",
+            timeout=60000,
+        )
 
     try:
-        page.wait_for_url(
-            re.compile(
-                r".*/KPI/VistaKPI.*",
-                re.IGNORECASE,
-            ),
-            timeout=120000,
-        )
-    except PlaywrightTimeoutError:
+        page.wait_for_url(padrao_url, timeout=30000)
+    except PlaywrightTimeoutError as erro:
         raise RuntimeError(
-            "O clique em Reporte 360 ocorreu, "
-            "mas a pagina KPI/VistaKPI nao foi carregada."
+            "PrevSys: a rota KPI/VistaKPI nao foi carregada."
+        ) from erro
+
+    time.sleep(5)
+
+    atual = urlsplit(page.url)
+
+    if (
+        atual.scheme != "https"
+        or atual.hostname != "celeo.prevsis.com"
+        or atual.path.lower() != "/kpi/vistakpi"
+        or parse_qs(atual.query).get("Modulo") != ["191"]
+    ):
+        raise RuntimeError(
+            "PrevSys: pagina final divergente do Reporte 360. "
+            f"URL: {page.url}"
         )
 
-    print(
-        f"Reporte 360 carregado: {page.url}"
-    )
-
-    # Aguarda a interface do QuickSight iniciar.
-    time.sleep(5)
+    print(f"Reporte 360 carregado e validado: {page.url}")
 
 
 # =========================================================
