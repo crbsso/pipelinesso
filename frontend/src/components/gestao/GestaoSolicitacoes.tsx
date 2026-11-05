@@ -3,24 +3,12 @@
 import { useState } from "react";
 
 import { Paginacao, useConsulta } from "./GestaoUI";
+import LiberarSolicitacao from "./LiberarSolicitacao";
+import type { SolicitacaoAcesso as Solicitacao } from "@/lib/gestao/contratos";
 
 type StatusSolicitacao = "PENDENTE" | "APROVADO" | "REJEITADO" | "CANCELADO";
 
-type Solicitacao = {
-  id: string;
-  nome_completo: string;
-  email_corporativo: string;
-  empresa: string;
-  cargo_funcao: string;
-  projeto_unidade: string;
-  justificativa: string;
-  status: StatusSolicitacao;
-  criado_em: string;
-  atualizado_em: string;
-  analisado_em: string | null;
-  analisado_por: string | null;
-  observacao_analise: string | null;
-};
+
 
 type RespostaLista = {
   total: number;
@@ -119,7 +107,7 @@ export default function GestaoSolicitacoesAcessoPage() {
             Solicitações de acesso
           </h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-500">
-            Analise as solicitações de acesso ao Portal SSO. Aprovar nesta etapa não cria automaticamente uma conta de usuário.
+            Escolha o perfil, libere o acesso e envie o convite para a pessoa definir sua senha.
           </p>
         </div>
 
@@ -322,14 +310,7 @@ export default function GestaoSolicitacoesAcessoPage() {
                   >
                     {processando === "REJEITAR" ? "Rejeitando..." : "Rejeitar"}
                   </button>
-                  <button
-                    type="button"
-                    disabled={Boolean(processando)}
-                    onClick={() => void analisar("APROVAR")}
-                    className="h-11 rounded-lg bg-emerald-600 px-5 text-sm font-semibold text-white disabled:opacity-60"
-                  >
-                    {processando === "APROVAR" ? "Aprovando..." : "Aprovar"}
-                  </button>
+
                 </div>
               </>
             ) : (
@@ -338,6 +319,10 @@ export default function GestaoSolicitacoesAcessoPage() {
                 {selecionada.observacao_analise || "Nenhuma observação registrada."}
               </div>
             )}
+            {(selecionada.status === "PENDENTE" || selecionada.status === "APROVADO") && <LiberarSolicitacao
+              key={selecionada.id} solicitacao={selecionada} observacao={observacao}
+              aoProcessar={ocupado => setProcessando(ocupado ? "APROVAR" : null)}
+              concluir={solicitacao => { setSelecionada(solicitacao); carregar(); }} />}
           </div>
         </div>
       )}

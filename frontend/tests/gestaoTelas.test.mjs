@@ -107,3 +107,18 @@ test("vinculo de perfil nao oferece selecao de abas por usuario",()=>{
  assert.match(html,/Perfil de consulta/);assert.match(html,/Salvar vínculo/);
  assert.doesNotMatch(html,/abrangencia-|Sem concessão|Conferência antes de salvar|<option value="corporativa"/);
 });
+
+test("solicitação aprovada sem conta permite escolher perfil explicitamente e concluir a liberação",()=>{
+ const Tela=componente("LiberarSolicitacao",{
+  "/api/gestao/contexto":{usuarios:true,permissoes:true,solicitacoes_acesso:true},
+  "/api/gestao/catalogo-perfis?limite=100":{dados:[{id:"tst",nome:"TST",descricao:"Consultas técnicas",ativo:true}],total:1}
+ });
+ const html=renderToStaticMarkup(React.createElement(Tela,{solicitacao:{id:"s1",status:"APROVADO",atualizado_em:"v1"},observacao:"",concluir(){}}));
+ assert.match(html,/Qual perfil liberar\?/);assert.match(html,/TST/);assert.match(html,/Concluir liberação e enviar convite/);
+ assert.doesNotMatch(html,/type="radio"[^>]*checked/);assert.doesNotMatch(html,/<input[^>]*checked=""\/>Sem vencimento/);
+});
+test("liberação com falha de envio exibe perfil e reenvio sem conceder outro perfil",()=>{
+ const Tela=componente("LiberarSolicitacao",{"/api/gestao/contexto":{usuarios:true,permissoes:true,solicitacoes_acesso:true}});
+ const html=renderToStaticMarkup(React.createElement(Tela,{solicitacao:{id:"s1",status:"APROVADO",liberado_em:"2026-11-05T15:00:00Z",perfil_liberado_nome:"TST",convite_status:"FALHOU"},observacao:"",concluir(){}}));
+ assert.match(html,/Perfil liberado/);assert.match(html,/TST/);assert.match(html,/envio do convite falhou/);assert.match(html,/Reenviar convite/);assert.doesNotMatch(html,/type="radio"/);
+});
