@@ -3,7 +3,8 @@ import type { ClienteContextoAcesso } from "../auth/carregarContextoAcesso.ts";
 export type ModuloGestao = "usuarios" | "permissoes" | "solicitacoes_acesso";
 export type OperacaoGestao = "listar_usuarios" | "salvar_usuario" | "listar_perfis" | "catalogo_perfis"
   | "obter_perfil" | "excluir_perfil" | "salvar_perfil" | "listar_atribuicoes" | "salvar_atribuicao" | "estado_atribuicao"
-  | "listar_solicitacoes" | "analisar_solicitacao" | "listar_auditoria";
+  | "listar_solicitacoes" | "analisar_solicitacao" | "listar_auditoria"
+  | "preparar_aprovacao" | "preparar_convite" | "registrar_convite";
 export interface ClienteGestao extends ClienteContextoAcesso {
   rpc(nome: "obter_contexto_acesso_portal"): PromiseLike<{ data: unknown; error: unknown ;}>;
   rpc(nome: "gerir_acessos_portal", dados: { p_operacao: OperacaoGestao; p_dados: Record<string, unknown> ;}):
@@ -51,7 +52,7 @@ function filtros(request: Request) {
   }
   return d;
 }
-function falhaBanco(erro: { code?: string; message?: string ;}) {
+export function falhaBanco(erro: { code?: string; message?: string ;}) {
   if (erro.code === "42501") return jsonGestao({ error: "Você não possui permissão para esta operação." }, 403);
   const custom = erro.code?.match(/^PT(400|403|404|409)$/);
   if (custom) return jsonGestao({ error: erro.message ?? "A operação não foi concluída." }, Number(custom[1]));
@@ -73,6 +74,7 @@ function origemAlvo(request: Request, origemDoServidor?: string): string {
 export async function executarGestao(request: Request, rota: {
   modulo: ModuloGestao; operacao: OperacaoGestao; escrita?: boolean; duplaPermissao?: boolean;
   fixos?: Record<string, unknown>; semFiltros?: boolean;
+  processar?: (cliente: ClienteGestao, dados: Record<string, unknown>) => Promise<Response>;
 }, criarCliente: () => Promise<ClienteGestao>, origemDoServidor?: string): Promise<Response> {
   try {
     if (rota.escrita) {
@@ -97,6 +99,7 @@ error: acesso.status === 401 ? "Entre para continuar." : acesso.status === 503 ?
       if (chave in dados && dados[chave] !== valor) throw new FalhaEntrada(400, "O identificador não corresponde ao endereço.");
       dados[chave] = valor;
     }
+    if (rota.processar) return await rota.processar(cliente, dados);
     const r = await cliente.rpc("gerir_acessos_portal", { p_operacao: rota.operacao, p_dados: dados });
     return r.error ? falhaBanco(r.error) : jsonGestao(r.data);
   } catch (e) {

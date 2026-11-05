@@ -30,3 +30,11 @@ export const RECURSOS_GESTAO: Record<ModuloPortal, { nome: string; acao: AcaoPor
 export function formatarInstante(valor: string | null) {
   return valor ? new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short", timeZone: "America/Sao_Paulo" }).format(new Date(valor)) : "Sem limite";
 }
+
+export type SolicitacaoAcesso = {
+ id: string; nome_completo: string; email_corporativo: string; empresa: string; cargo_funcao: string;
+ projeto_unidade: string; justificativa: string; status: "PENDENTE" | "APROVADO" | "REJEITADO" | "CANCELADO";
+ criado_em: string; atualizado_em: string; analisado_em: string | null; analisado_por: string | null; observacao_analise: string | null;
+ liberado_em?: string | null; perfil_liberado_nome?: string | null;
+ convite_status?: "NAO_ENVIADO" | "PROCESSANDO" | "ENVIADO" | "FALHOU" | "CONTA_EXISTENTE";
+};

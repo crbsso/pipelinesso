@@ -45,6 +45,7 @@ export async function updateSession(request: NextRequest) {
   const isPublicRoute =
     pathname === "/signin" ||
     pathname === "/esqueci-senha" ||
+    pathname === "/aceitar-convite" ||
     pathname === "/solicitar-acesso" ||
     pathname.startsWith("/auth/confirm");
 

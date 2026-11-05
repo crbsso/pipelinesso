@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
   // Remove o token da URL que ficará visível ao usuário.
   redirectTo.search = "";
 
-  if (tokenHash && type === "recovery") {
+  if (tokenHash && (type === "recovery" || type === "invite")) {
     const supabase = await createClient();
 
     const { error } = await supabase.auth.verifyOtp({

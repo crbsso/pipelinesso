@@ -1,5 +1,6 @@
 import { Outfit } from 'next/font/google';
 import './globals.css';
+import EncaminharConvite from '@/components/auth/EncaminharConvite';
 import "flatpickr/dist/flatpickr.css";
 import { SidebarProvider } from '@/context/SidebarContext';
 import { ThemeProvider } from '@/context/ThemeContext';
@@ -16,6 +17,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${outfit.className} dark:bg-gray-900`}>
+        <EncaminharConvite />
         <ThemeProvider>
           <SidebarProvider>{children}</SidebarProvider>
         </ThemeProvider>
