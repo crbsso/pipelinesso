@@ -13,7 +13,7 @@ set "MODO="
 set "AMBIENTE=MODO_NORMAL_PROD"
 
 if not "%~1"=="" (
-    if /I not "%~1"=="--teste-hml" (
+    if /I not "%~1"=="--teste-hml" if /I not "%~1"=="--atualizar-paineis" (
         echo ERRO: argumento nao autorizado.
         exit /b 2
     )
@@ -21,8 +21,12 @@ if not "%~1"=="" (
         echo ERRO: argumentos extras nao permitidos.
         exit /b 2
     )
-    set "MODO=--teste-hml"
-    set "AMBIENTE=TESTE_HML"
+    set "MODO=%~1"
+    if /I "%~1"=="--teste-hml" (
+        set "AMBIENTE=TESTE_HML"
+    ) else (
+        set "AMBIENTE=PROD_SEM_HISTORICO"
+    )
 )
 
 cd /d "%PROJETO%"
