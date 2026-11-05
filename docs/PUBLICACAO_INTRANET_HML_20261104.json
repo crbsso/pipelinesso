@@ -1,0 +1,30 @@
+{
+  "data": "2026-11-04",
+  "ambiente": "homologacao",
+  "projeto": "pipelinesso-homologacao",
+  "project_id": "ckfsarzmudwdehiiltwi",
+  "carga_id": "71873896-846e-40db-a21d-735cc03b4dec",
+  "inicio_inclusivo": "2026-10-01",
+  "fim_exclusivo": "2026-11-01",
+  "fuso_confirmado_pelo_usuario": "America/Sao_Paulo",
+  "sha256_origem": "4DC1AC209991D6482E5CA8E783DB06CC14C5FBB256383BDC823A4BB0CDEE8F9D",
+  "autorizacao": "Usuario autorizou a publicacao dos 740 registros em homologacao neste chat.",
+  "metodo": "Arquivo validado pela funcao validar_arquivo do publicador; insercao via plugin Supabase e promocao pela RPC existente, em transacao unica com bloqueio e verificacao de tabelas vazias.",
+  "staging": 740,
+  "publicados": 740,
+  "familias": 6,
+  "chaves_distintas": 740,
+  "diferencas_staging_mart": 0,
+  "fora_periodo": 0,
+  "referencias": {
+    "cintos": 185,
+    "acessorios": 19,
+    "locais_extintores": 60,
+    "veiculos_mensais": 111
+  },
+  "rls_ativo_nas_duas_tabelas": true,
+  "select_anon_e_authenticated_nas_duas_tabelas": false,
+  "staging_preservada": true,
+  "resultado": "PUBLICACAO E CONCILIACAO APROVADAS",
+  "proxima_etapa": "Integrar as inspecoes da manutencao ao pipeline e ao portal apos esta homologacao; esta publicacao nao incluiu alteracoes no frontend nem em producao."
+}

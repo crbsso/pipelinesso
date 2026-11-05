@@ -205,7 +205,38 @@ def main() -> int:
         action="store_true",
         help="Executar somente etapas 14 a 23, sem publicacoes",
     )
+    parser.add_argument("--manutencao", action="store_true", help="Executar somente o piloto Intranet, independente das 26 etapas")
+    parser.add_argument("--arquivo-intranet", type=Path)
+    parser.add_argument("--confirmar-fuso-origem", choices=("America/Sao_Paulo",))
+    parser.add_argument("--extrair-intranet", action="store_true")
+    parser.add_argument("--permitir-certificado-temporario", action="store_true")
+    parser.add_argument("--publicar-manutencao-hml", action="store_true")
+    parser.add_argument("--painel-completo-manutencao", action="store_true")
+    parser.add_argument("--inicio-intranet")
+    parser.add_argument("--fim-intranet")
     args = parser.parse_args()
+    parametros_manutencao = (args.painel_completo_manutencao or args.inicio_intranet or args.fim_intranet or args.arquivo_intranet or args.confirmar_fuso_origem
+        or args.extrair_intranet or args.permitir_certificado_temporario or args.publicar_manutencao_hml)
+    if parametros_manutencao and not args.manutencao:
+        parser.error("Os argumentos da Intranet exigem --manutencao.")
+    if args.manutencao:
+        if args.plano or args.verificar or args.teste_hml or args.retomar_14a23 or getattr(args, "atualizar_paineis", False):
+            parser.error("--manutencao nao pode ser combinado com outros modos.")
+        if not args.arquivo_intranet or not args.confirmar_fuso_origem:
+            parser.error("--manutencao exige --arquivo-intranet e --confirmar-fuso-origem.")
+        entrada = "painel_manutencao.py" if args.painel_completo_manutencao else "executar_pipeline_manutencao.py"
+        comando = [sys.executable, "-B", str(backend("intranet", entrada)),
+                   "--arquivo", str(args.arquivo_intranet.resolve()),
+                   "--confirmar-fuso-origem", args.confirmar_fuso_origem]
+        if args.painel_completo_manutencao and args.inicio_intranet and args.fim_intranet:
+            comando.extend(["--inicio", args.inicio_intranet, "--fim", args.fim_intranet])
+        if args.extrair_intranet:
+            comando.append("--extrair")
+        if args.permitir_certificado_temporario:
+            comando.append("--permitir-certificado-temporario")
+        if args.publicar_manutencao_hml:
+            comando.append("--publicar-hml")
+        return subprocess.run(comando, cwd=RAIZ, check=False).returncode
     if args.teste_hml and (args.plano or args.verificar or args.retomar_14a23):
         parser.error("--teste-hml nao pode ser combinado com outros modos")
     if args.atualizar_paineis and (

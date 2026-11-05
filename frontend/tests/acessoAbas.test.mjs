@@ -13,7 +13,7 @@ function contexto(modulos=[],abrangencia={tipo:'corporativa'}){return {usuarioId
 function sessao(estado){return {auth:{async getUser(){return {data:{user:estado.logado===false?null:{id:'pessoa'}},error:null};}},async rpc(nome){assert.equal(nome,'obter_contexto_acesso_portal');return {data:estado.contexto,error:estado.falha?{message:'interno'}:null};}};}
 function ambiente(estado){
  const cache=new Map();
- const dados={from(){return dados;},select(){return dados;},eq(){return dados;},gte(){return dados;},lt(){return dados;},ilike(){return dados;},in(){return dados;},order(){return dados;},range(){return dados;},limit(){return dados;},then(resolve,reject){return Promise.resolve({data:[],error:null,count:0}).then(resolve,reject);}};
+ const dados={from(tabela){estado.tabela=tabela;return dados;},select(){return dados;},eq(){return dados;},gte(){return dados;},lt(){return dados;},ilike(){return dados;},in(){return dados;},order(){return dados;},range(inicio,fim){estado.intervalo=[inicio,fim];estado.intervalos??=[];estado.intervalos.push([inicio,fim]);return dados;},limit(){return dados;},then(resolve,reject){const linhas=estado.tabela==="mart_painel_manutencao"?(estado.cargasMensais??[]):(estado.registros??[]);const [inicio,fim]=estado.intervalo??[0,linhas.length];return Promise.resolve({data:estado.paginaVazia?[]:linhas.slice(inicio,fim+1),error:estado.falhaConsulta?{message:'detalhe_interno_secreto'}:null,count:linhas.length}).then(resolve,reject);}};
  function carregar(arquivo){
   arquivo=path.resolve(arquivo);if(cache.has(arquivo))return cache.get(arquivo);
   const fonte=readFileSync(arquivo,'utf8');
@@ -36,7 +36,7 @@ function ambiente(estado){
  }
  return arquivo=>carregar(path.join(raiz,arquivo));
 }
-const rotas=[['avcb','avcb'],['inspecoes','inspecoes'],['planos-acao','planos_acao'],['acoes-corretivas','acoes_corretivas'],['motoristas','motoristas'],['motoristas/historico','motoristas_historico'],['motoristas/direcao','motoristas_direcao'],['motoristas/velocidade','motoristas_velocidade']];
+const rotas=[['avcb','avcb'],['inspecoes','inspecoes'],['inspecoes/manutencao','inspecoes'],['planos-acao','planos_acao'],['acoes-corretivas','acoes_corretivas'],['motoristas','motoristas'],['motoristas/historico','motoristas_historico'],['motoristas/direcao','motoristas_direcao'],['motoristas/velocidade','motoristas_velocidade']];
 test('abas: perfil reutilizavel concede somente capacidades e nao depende do nome',()=>{
  const c=contexto(['inspecoes']);for(const id of ['pessoa1','pessoa2']){const r=abasDoContexto({...c,usuarioId:id});assert.equal(r.inspecoes,true);assert.equal(r.motoristas,false);assert.equal(r.usuarios,false);}
  assert.equal(rotaPermitida('/consultas/painel-gerencial/inspecoes',abasDoContexto(c)),true);
@@ -53,7 +53,7 @@ test('abas: revogacao, inativacao, vencimento e falha sao observados sem novo lo
  estado.falha=true;assert.equal((await exigirAba(cliente,'inspecoes')).status,503);
  estado.logado=false;assert.equal((await exigirAba(cliente,'inspecoes')).status,401);
 });
-test('oito APIs reais: sessao ausente e perfil de outro modulo nao chegam ao cliente privilegiado',async t=>{
+test('nove APIs reais: sessao ausente e perfil de outro modulo nao chegam ao cliente privilegiado',async t=>{
  const anterior=process.env.NODE_ENV;process.env.NODE_ENV='development';
  try{for(const [rota,modulo] of rotas)await t.test(rota,async()=>{
   for(const logado of [false,true]){
@@ -64,8 +64,8 @@ test('oito APIs reais: sessao ausente e perfil de outro modulo nao chegam ao cli
   }
  });}finally{process.env.NODE_ENV=anterior;}
 });
-test('oito APIs reais: somente a aba concedida libera a consulta; as outras continuam bloqueadas',async t=>{
- const anterior={...process.env};process.env.NODE_ENV='development';process.env.SUPABASE_URL='https://hml.example.test';process.env.NEXT_PUBLIC_SUPABASE_URL=process.env.SUPABASE_URL;process.env.SUPABASE_SECRET_KEY='fixture_local_sem_credencial_real';
+test('nove APIs reais: somente a aba concedida libera a consulta; as outras continuam bloqueadas',async t=>{
+ const anterior={...process.env};process.env.NODE_ENV='development';process.env.SUPABASE_URL='https://ckfsarzmudwdehiiltwi.supabase.co';process.env.NEXT_PUBLIC_SUPABASE_URL=process.env.SUPABASE_URL;process.env.SUPABASE_SECRET_KEY='fixture_local_sem_credencial_real';
  try{for(const [rota,modulo] of rotas)await t.test(rota,async()=>{
   const estado={contexto:contexto([modulo]),consultasPrivilegiadas:0};const carregar=ambiente(estado);const {GET}=carregar('app/api/'+rota+'/route.ts');const {NextRequest}=req('next/server');
   assert.equal((await GET(new NextRequest('http://portal.test/api/'+rota))).status,200);assert.ok(estado.consultasPrivilegiadas>0);
@@ -94,4 +94,59 @@ test('permissoes nao liberam recursos em validacao e configuracao de outro proje
   const servidor=ambiente({contexto:contexto(MODULOS_CONSULTA)})('lib/auth/abasServidor.ts');const r=await servidor.carregarAbas();assert.equal(r.ok,true);assert.equal(r.abas.motoristas,true);assert.equal(r.abas.motoristas_historico,false);assert.equal(r.abas.motoristas_direcao,false);assert.equal(r.abas.motoristas_velocidade,false);
   process.env.SUPABASE_URL='https://outro.example.test';process.env.NEXT_PUBLIC_SUPABASE_URL='https://hml.example.test';assert.equal((await servidor.autorizarConsulta('avcb')).status,503);
  }finally{for(const k of ['NODE_ENV','SSO_MOTORISTAS_HISTORICO_ENABLED','SSO_MOTORISTAS_DIRECAO_ENABLED','SSO_MOTORISTAS_APIS_ENABLED','SUPABASE_URL','NEXT_PUBLIC_SUPABASE_URL']){if(anterior[k]===undefined)delete process.env[k];else process.env[k]=anterior[k];}}
+});
+
+
+test('manutencao: paginacao retorna mais de mil registros sem truncar e rejeita consultas incompletas', async()=>{
+ const anterior={...process.env};process.env.NODE_ENV='development';process.env.SUPABASE_URL='https://ckfsarzmudwdehiiltwi.supabase.co';process.env.NEXT_PUBLIC_SUPABASE_URL=process.env.SUPABASE_URL;process.env.SUPABASE_SECRET_KEY='fixture_local_sem_credencial_real';
+ try {
+  const estado={contexto:contexto(['inspecoes']),registros:Array.from({length:1201},(_,i)=>({id_inspecao:i+1})),intervalos:[]};
+  const {GET}=ambiente(estado)('app/api/inspecoes/manutencao/route.ts');
+  const resposta=await GET(new Request('http://portal.test/api/inspecoes/manutencao?mes=2026-12'));
+  assert.equal(resposta.status,200);const corpo=await resposta.json();assert.equal(corpo.total,1201);assert.equal(corpo.dados[1200].id_inspecao,1201);assert.deepEqual(estado.intervalos,[[0,499],[500,999],[1000,1499]]);assert.equal(resposta.headers.get('vary'),'Cookie');
+  estado.paginaVazia=true;assert.equal((await GET(new Request('http://portal.test/api/inspecoes/manutencao'))).status,503);
+  estado.paginaVazia=false;estado.falhaConsulta=true;const erro=await GET(new Request('http://portal.test/api/inspecoes/manutencao'));assert.equal(erro.status,503);assert.doesNotMatch(await erro.text(),/detalhe_interno_secreto/);
+ } finally {for(const k of ['NODE_ENV','SUPABASE_URL','NEXT_PUBLIC_SUPABASE_URL','SUPABASE_SECRET_KEY']){if(anterior[k]===undefined)delete process.env[k];else process.env[k]=anterior[k];}}
+});
+
+test('manutencao: mes invalido e outro ambiente nao iniciam consulta privilegiada', async()=>{
+ const anterior={...process.env};process.env.NODE_ENV='development';process.env.SUPABASE_URL='https://ckfsarzmudwdehiiltwi.supabase.co';process.env.NEXT_PUBLIC_SUPABASE_URL=process.env.SUPABASE_URL;process.env.SUPABASE_SECRET_KEY='fixture_local_sem_credencial_real';
+ try {
+  const estado={contexto:contexto(['inspecoes']),consultasPrivilegiadas:0};const {GET}=ambiente(estado)('app/api/inspecoes/manutencao/route.ts');
+  for(const mes of ['2026-13','2026-00','2026-1','texto',''])assert.equal((await GET(new Request('http://portal.test/api/inspecoes/manutencao?mes='+mes))).status,400);
+  assert.equal(estado.consultasPrivilegiadas,0);
+  process.env.SUPABASE_URL='https://outro.example.test';process.env.NEXT_PUBLIC_SUPABASE_URL=process.env.SUPABASE_URL;
+  assert.equal((await GET(new Request('http://portal.test/api/inspecoes/manutencao'))).status,404);assert.equal(estado.consultasPrivilegiadas,0);
+ } finally {for(const k of ['NODE_ENV','SUPABASE_URL','NEXT_PUBLIC_SUPABASE_URL','SUPABASE_SECRET_KEY']){if(anterior[k]===undefined)delete process.env[k];else process.env[k]=anterior[k];}}
+});
+
+test('manutencao: ano permite leitura paginada e parametros invalidos nao chegam ao cliente privilegiado',async()=>{
+ const anterior={...process.env};process.env.NODE_ENV='development';process.env.SUPABASE_URL='https://ckfsarzmudwdehiiltwi.supabase.co';process.env.NEXT_PUBLIC_SUPABASE_URL=process.env.SUPABASE_URL;process.env.SUPABASE_SECRET_KEY='fixture_local_sem_credencial_real';
+ try{
+  const estado={contexto:contexto(['inspecoes']),consultasPrivilegiadas:0,registros:Array.from({length:1201},(_,i)=>({id_inspecao:i+1})),intervalos:[]};
+  const {GET}=ambiente(estado)('app/api/inspecoes/manutencao/route.ts');
+  for(const parametros of ['ano=','ano=26','ano=1899','ano=9999','ano=2026-10','ano=2026&mes=2026-10'])assert.equal((await GET(new Request('http://portal.test/api/inspecoes/manutencao?'+parametros))).status,400);
+  assert.equal(estado.consultasPrivilegiadas,0);
+  const resposta=await GET(new Request('http://portal.test/api/inspecoes/manutencao?ano=2026'));
+  assert.equal(resposta.status,200);const corpo=await resposta.json();assert.equal(corpo.ano,'2026');assert.equal(corpo.mes,undefined);assert.equal(corpo.total,1201);assert.deepEqual(estado.intervalos,[[0,499],[500,999],[1000,1499]]);
+  estado.contexto=contexto([]);const antes=estado.consultasPrivilegiadas;assert.equal((await GET(new Request('http://portal.test/api/inspecoes/manutencao?ano=2026'))).status,403);assert.equal(estado.consultasPrivilegiadas,antes);
+ }finally{for(const k of ['NODE_ENV','SUPABASE_URL','NEXT_PUBLIC_SUPABASE_URL','SUPABASE_SECRET_KEY']){if(anterior[k]===undefined)delete process.env[k];else process.env[k]=anterior[k];}}
+});
+
+test('manutencao: API autenticada entrega snapshots com metas por atividade e nao soma formularios ao realizado',async()=>{
+ const anterior={...process.env};
+ process.env.NODE_ENV='development';process.env.SUPABASE_URL='https://ckfsarzmudwdehiiltwi.supabase.co';process.env.NEXT_PUBLIC_SUPABASE_URL=process.env.SUPABASE_URL;process.env.SUPABASE_SECRET_KEY='fixture_local_sem_credencial_real';
+ try {
+  const ordem={os_id:10,plano_id:197,concessao:'A',localizacao:'SE 1',equipamento_id:null,data_prevista:'2026-10-01',data_original:'2026-10-01',data_final_real:null,estagio:'Finalizado'};
+  const carga={competencia:'2026-10-01',extraido_em:'2026-11-05T12:00:00Z',conteudo:{versao:1,origem:'SQL Server Intranet',dados:[{id_inspecao:1},{id_inspecao:2}],programacao:{inicio:'2026-10-01',fim_exclusivo:'2026-11-01',fim_realizacoes_exclusivo:'2026-11-01',ordens:[ordem],vinculos:[]},atividades:[{atividade_os_id:100,os_id:10,atividade_id:7911,status:2}]}};
+  const estado={contexto:contexto(['inspecoes']),cargasMensais:[carga],registros:[]};
+  const {GET}=ambiente(estado)('app/api/inspecoes/manutencao/route.ts');
+  const resposta=await GET(new Request('http://portal.test/api/inspecoes/manutencao?ano=2026'));
+  assert.equal(resposta.status,200);const corpo=await resposta.json();assert.equal(corpo.total,2);
+  const epi=corpo.metasPorTipo.find(m=>m.tipo==='Cinto de segurança');assert.equal(epi.quantidade,1);assert.equal(epi.realizadas,1);assert.equal(corpo.programacao.ordens.length,1);
+  assert.match(resposta.headers.get('cache-control'),/private.*no-store/);
+  carga.conteudo.atividades.push({...carga.conteudo.atividades[0]});
+  const falha=await GET(new Request('http://portal.test/api/inspecoes/manutencao?ano=2026'));
+  assert.equal(falha.status,503);assert.doesNotMatch(await falha.text(),/duplicada|fixture|segredo/i);
+ }finally{for(const k of ['NODE_ENV','SUPABASE_URL','NEXT_PUBLIC_SUPABASE_URL','SUPABASE_SECRET_KEY']){if(anterior[k]===undefined)delete process.env[k];else process.env[k]=anterior[k];}}
 });
