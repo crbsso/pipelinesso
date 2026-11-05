@@ -15,7 +15,7 @@ def main():
     log = os.environ.get("BAT_LOG", "").strip()
     modo = os.environ.get("BAT_MODO", "").strip()
 
-    if modo not in ("", "--teste-hml"):
+    if modo not in ("", "--teste-hml", "--atualizar-paineis"):
         print("ERRO: modo nao autorizado.", file=sys.stderr)
         return 90
 
@@ -33,8 +33,8 @@ def main():
 
     comando = [python, "-u", script]
 
-    if modo == "--teste-hml":
-        comando.append("--teste-hml")
+    if modo:
+        comando.append(modo)
 
     processo = None
 
