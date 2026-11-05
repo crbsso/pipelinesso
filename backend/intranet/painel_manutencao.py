@@ -12,6 +12,7 @@ from urllib.parse import urlparse
 
 RAIZ = Path(__file__).resolve().parents[2]
 HML_REF = "ckfsarzmudwdehiiltwi"
+PROD_REF = "lkhidajhsqgebjltyicb"
 ATIVIDADES = {7911, 7913, 7915, 7917, 7918, 7919}
 
 def exigir(condicao, mensagem):
@@ -88,14 +89,17 @@ def preparar_cargas(documento):
         mes = ate
     return cargas
 
-def publicar(cargas, url, segredo):
-    exigir(urlparse(url).scheme == "https" and urlparse(url).hostname == f"{HML_REF}.supabase.co", "Publicação permitida somente na homologação")
+def publicar(cargas, url, segredo, ambiente="hml", confirmacao=None):
+    exigir(ambiente in ("hml", "producao"), "Ambiente inválido")
+    ref = HML_REF if ambiente == "hml" else PROD_REF
+    exigir(ambiente != "producao" or confirmacao == PROD_REF, "Confirmação explícita de produção ausente")
+    exigir(urlparse(url).scheme == "https" and urlparse(url).hostname == f"{ref}.supabase.co", "URL não corresponde ao ambiente confirmado")
     exigir(bool(segredo), "SUPABASE_SECRET_KEY ausente")
     import requests
     resposta = requests.post(url.rstrip("/") + "/rest/v1/rpc/publicar_painel_manutencao",
         headers={"apikey": segredo, "Authorization": "Bearer " + segredo},
         json={"p_cargas": cargas}, timeout=90)
-    exigir(resposta.status_code == 200, f"Publicação recusada (HTTP {resposta.status_code}); consulte a homologação")
+    exigir(resposta.status_code == 200, f"Publicação recusada (HTTP {resposta.status_code}); consulte o ambiente selecionado")
     exigir(resposta.json() == len(cargas), "Conciliação da quantidade de meses divergente")
     return len(cargas)
 
@@ -108,8 +112,14 @@ def main(argv=None):
     parser.add_argument("--confirmar-fuso-origem", choices=["America/Sao_Paulo"], required=True)
     parser.add_argument("--permitir-certificado-temporario", action="store_true")
     parser.add_argument("--publicar-hml", action="store_true")
+    parser.add_argument("--publicar-prod", action="store_true")
+    parser.add_argument("--confirmar-producao")
     parser.add_argument("--saida-cargas", type=Path)
     args = parser.parse_args(argv)
+    if args.publicar_hml and args.publicar_prod:
+        parser.error("Selecione um único ambiente para publicação")
+    if args.publicar_prod and args.confirmar_producao != PROD_REF:
+        parser.error("Confirme o projeto de produção com --confirmar-producao")
     if args.permitir_certificado_temporario and not args.extrair:
         parser.error("A exceção de certificado exige extração")
     if args.extrair:
@@ -129,14 +139,15 @@ def main(argv=None):
     if args.saida_cargas:
         args.saida_cargas.parent.mkdir(parents=True, exist_ok=True)
         args.saida_cargas.write_text(json.dumps(cargas, ensure_ascii=False), encoding="utf-8")
-    if args.publicar_hml:
+    if args.publicar_hml or args.publicar_prod:
         from dotenv import dotenv_values
         config = {**dotenv_values(RAIZ / ".env"), **os.environ}
-        publicar(cargas, config.get("SUPABASE_URL", ""), config.get("SUPABASE_SECRET_KEY", ""))
+        publicar(cargas, config.get("SUPABASE_URL", ""), config.get("SUPABASE_SECRET_KEY", ""),
+            "producao" if args.publicar_prod else "hml", args.confirmar_producao)
     print(json.dumps({"validacao": "APROVADA", "meses": len(cargas),
         "inspecoes": sum(len(c["conteudo"]["dados"]) for c in cargas),
         "atividades": sum(len(c["conteudo"]["atividades"]) for c in cargas),
-        "publicado_hml": args.publicar_hml}, ensure_ascii=False))
+        "publicado_hml": args.publicar_hml, "publicado_prod": args.publicar_prod}, ensure_ascii=False))
     return 0
 
 if __name__ == "__main__":

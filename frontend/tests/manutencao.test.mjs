@@ -51,3 +51,10 @@ test('manutencao: trimestre parcial e acumulado nao preenchem lacunas com zero',
  assert.equal(acumulado[0].total,null);assert.equal(acumulado[9].total,1);assert.equal(acumulado[10].total,null);assert.equal(acumulado[11].total,3);assert.equal(acumulado[11].mesesComDados,2);
  assert.deepEqual(meses,antes);
 });
+
+test('manutencao: somente os projetos de homologacao e producao aprovados habilitam a aba',async()=>{
+ const {ambienteManutencaoDisponivel,HML_MANUTENCAO_URL,PROD_MANUTENCAO_URL}=await import('../src/lib/inspecoes/manutencao.ts');
+ assert.equal(ambienteManutencaoDisponivel(HML_MANUTENCAO_URL),true);
+ assert.equal(ambienteManutencaoDisponivel(PROD_MANUTENCAO_URL),true);
+ for(const url of [undefined,'','http://lkhidajhsqgebjltyicb.supabase.co','https://outro.supabase.co',PROD_MANUTENCAO_URL+'.atacante.test']) assert.equal(ambienteManutencaoDisponivel(url),false);
+});

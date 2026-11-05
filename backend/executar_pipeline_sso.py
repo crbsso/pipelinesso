@@ -211,14 +211,20 @@ def main() -> int:
     parser.add_argument("--extrair-intranet", action="store_true")
     parser.add_argument("--permitir-certificado-temporario", action="store_true")
     parser.add_argument("--publicar-manutencao-hml", action="store_true")
+    parser.add_argument("--publicar-manutencao-prod", action="store_true")
+    parser.add_argument("--confirmar-producao")
     parser.add_argument("--painel-completo-manutencao", action="store_true")
     parser.add_argument("--inicio-intranet")
     parser.add_argument("--fim-intranet")
     args = parser.parse_args()
-    parametros_manutencao = (args.painel_completo_manutencao or args.inicio_intranet or args.fim_intranet or args.arquivo_intranet or args.confirmar_fuso_origem
+    parametros_manutencao = (args.publicar_manutencao_prod or args.confirmar_producao or args.painel_completo_manutencao or args.inicio_intranet or args.fim_intranet or args.arquivo_intranet or args.confirmar_fuso_origem
         or args.extrair_intranet or args.permitir_certificado_temporario or args.publicar_manutencao_hml)
     if parametros_manutencao and not args.manutencao:
         parser.error("Os argumentos da Intranet exigem --manutencao.")
+    if args.publicar_manutencao_hml and args.publicar_manutencao_prod:
+        parser.error("Selecione um único ambiente para a Manutenção")
+    if args.publicar_manutencao_prod and (not args.painel_completo_manutencao or args.confirmar_producao != "lkhidajhsqgebjltyicb"):
+        parser.error("Produção exige painel completo e confirmação do projeto")
     if args.manutencao:
         if args.plano or args.verificar or args.teste_hml or args.retomar_14a23 or getattr(args, "atualizar_paineis", False):
             parser.error("--manutencao nao pode ser combinado com outros modos.")
@@ -234,6 +240,8 @@ def main() -> int:
             comando.append("--extrair")
         if args.permitir_certificado_temporario:
             comando.append("--permitir-certificado-temporario")
+        if args.publicar_manutencao_prod:
+            comando.extend(["--publicar-prod", "--confirmar-producao", args.confirmar_producao])
         if args.publicar_manutencao_hml:
             comando.append("--publicar-hml")
         return subprocess.run(comando, cwd=RAIZ, check=False).returncode

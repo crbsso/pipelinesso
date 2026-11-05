@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { consolidarCargas, type CargaMensalManutencao } from "@/lib/inspecoes/programacao";
 import { createClient } from "@supabase/supabase-js";
 import { autorizarConsulta, CABECALHOS_ACESSO } from "@/lib/auth/abasServidor";
-import { HML_MANUTENCAO_URL, periodoAno, periodoMes, type InspecaoManutencao } from "@/lib/inspecoes/manutencao";
+import { ambienteManutencaoDisponivel, periodoAno, periodoMes, type InspecaoManutencao } from "@/lib/inspecoes/manutencao";
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
@@ -10,8 +10,8 @@ export async function GET(request: Request) {
   if (negacao) return negacao;
   const responder = (body: unknown, status = 200) => NextResponse.json(body, { status, headers: CABECALHOS_ACESSO });
   const url = process.env.SUPABASE_URL;
-  // Piloto homologado neste projeto; a liberacao em producao e uma etapa posterior.
-  if (url !== HML_MANUTENCAO_URL) return responder({ error: "Consulta de manutenção indisponível neste ambiente." }, 404);
+  // Projetos de homologação e produção previamente validados.
+  if (!ambienteManutencaoDisponivel(url)) return responder({ error: "Consulta de manutenção indisponível neste ambiente." }, 404);
   const chave = process.env.SUPABASE_SECRET_KEY;
   if (!chave) return responder({ error: "Consulta temporariamente indisponível." }, 503);
   const parametros = new URL(request.url).searchParams;

@@ -6,6 +6,10 @@ export type InspecaoManutencao = {
 export type FiltrosManutencao = { familia: string; tipo: string; concessao: string; localizacao: string };
 export const FILTROS_VAZIOS: FiltrosManutencao = { familia: "", tipo: "", concessao: "", localizacao: "" };
 export const HML_MANUTENCAO_URL = "https://ckfsarzmudwdehiiltwi.supabase.co";
+export const PROD_MANUTENCAO_URL = "https://lkhidajhsqgebjltyicb.supabase.co";
+export function ambienteManutencaoDisponivel(url: string | undefined): url is string {
+  return url === HML_MANUTENCAO_URL || url === PROD_MANUTENCAO_URL;
+}
 export const MESES_MANUTENCAO = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
 export const FAMILIAS_MANUTENCAO = [
   "Inspeção de EPIs", "Inspeção de Ferramentas e Equipamentos Rotativos",

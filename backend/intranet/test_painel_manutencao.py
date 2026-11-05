@@ -41,6 +41,18 @@ class TestPainel(unittest.TestCase):
     def test_nao_publica_em_producao(self):
         with self.assertRaises(ValueError):
             publicar([], "https://producao.supabase.co", "segredo-ficticio")
+    def test_producao_exige_confirmacao_e_url_do_projeto_correto(self):
+        for url, confirmacao in (("https://lkhidajhsqgebjltyicb.supabase.co", None), ("https://ckfsarzmudwdehiiltwi.supabase.co", "lkhidajhsqgebjltyicb")):
+            with self.assertRaises(ValueError):
+                publicar([], url, "fixture", "producao", confirmacao)
+    def test_producao_confirmada_envia_somente_ao_projeto_selecionado(self):
+        import sys
+        from types import SimpleNamespace
+        from unittest.mock import patch, Mock
+        post = Mock(return_value=SimpleNamespace(status_code=200, json=lambda: 1))
+        with patch.dict(sys.modules, {"requests": SimpleNamespace(post=post)}):
+            self.assertEqual(publicar([{}], "https://lkhidajhsqgebjltyicb.supabase.co", "fixture", "producao", "lkhidajhsqgebjltyicb"), 1)
+        self.assertEqual(post.call_args.args[0], "https://lkhidajhsqgebjltyicb.supabase.co/rest/v1/rpc/publicar_painel_manutencao")
     def test_limites_de_tempo_e_fuso(self):
         for alteracao in ({"fuso_origem": "nao_verificado"}, {"inicio_inclusivo": "2026-10-02"}, {"fim_exclusivo": "2027-02-01"}):
             with self.assertRaises(ValueError):
