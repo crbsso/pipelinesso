@@ -148,11 +148,58 @@ def preflight_remoto() -> None:
         raise RuntimeError("Historico de producao nao habilitado/indisponivel. Nenhuma extracao iniciada.")
 
 
+
+def preflight_paineis_sem_historico() -> None:
+    """Confere PROD localmente; nao libera a etapa 26."""
+    from dotenv import dotenv_values
+
+    valores = dotenv_values(RAIZ / ".env")
+    ref_prod = "lkhidajhsqgebjltyicb"
+    url_prod = f"https://{ref_prod}.supabase.co"
+
+    url = (
+        os.environ.get("SUPABASE_URL")
+        or valores.get("SUPABASE_URL")
+        or ""
+    ).strip()
+
+    ref = (
+        os.environ.get("SSO_SUPABASE_PROJECT_REF")
+        or valores.get("SSO_SUPABASE_PROJECT_REF")
+        or ""
+    ).strip()
+
+    chave = (
+        os.environ.get("SUPABASE_SECRET_KEY")
+        or valores.get("SUPABASE_SECRET_KEY")
+        or ""
+    ).strip()
+
+    if url != url_prod or not chave or (ref and ref != ref_prod):
+        raise RuntimeError(
+            "Modo atualizar-paineis exige URL e credencial de PROD "
+            "e rejeita referencia divergente. Nenhuma extracao iniciada."
+        )
+
+    # Propaga a referencia validada aos publicadores subprocessos.
+    os.environ["SSO_SUPABASE_PROJECT_REF"] = ref_prod
+
+    print(
+        "PREFLIGHT PAINEIS: configuracao local PROD confirmada; "
+        "Historico PROD bloqueado.",
+        flush=True,
+    )
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Orquestracao Portal SSO - RM, Cobli, Prevsys e AVCB")
     parser.add_argument("--plano", action="store_true", help="Somente mostrar etapas")
     parser.add_argument("--verificar", action="store_true", help="Checagem estatica sem rede ou execucao")
     parser.add_argument("--teste-hml", action="store_true", help="Etapas 1-23 sem publicacoes ou PROD")
+    parser.add_argument(
+        "--atualizar-paineis",
+        action="store_true",
+        help="PROD: etapas 1-25, sem publicar Historico",
+    )
     parser.add_argument(
         "--retomar-14a23",
         action="store_true",
@@ -192,6 +239,13 @@ def main() -> int:
         return subprocess.run(comando, cwd=RAIZ, check=False).returncode
     if args.teste_hml and (args.plano or args.verificar or args.retomar_14a23):
         parser.error("--teste-hml nao pode ser combinado com outros modos")
+    if args.atualizar_paineis and (
+        args.plano or args.verificar
+        or args.teste_hml or args.retomar_14a23
+    ):
+        parser.error(
+            "--atualizar-paineis nao pode ser combinado com outros modos"
+        )
     if args.plano:
         listar_plano()
         return 0
@@ -262,6 +316,8 @@ def main() -> int:
                 "publicacoes bloqueadas.",
                 flush=True,
             )
+        elif args.atualizar_paineis:
+            preflight_paineis_sem_historico()
         else:
             # Modo normal: preserva o preflight de producao.
             preflight_remoto()
@@ -280,6 +336,8 @@ def main() -> int:
     try:
         for indice, (nome, script) in enumerate(ETAPAS, 1):
             if args.retomar_14a23 and not (14 <= indice <= 23):
+                continue
+            if args.atualizar_paineis and indice == 26:
                 continue
             if args.teste_hml and indice > 23:
                 continue
@@ -331,6 +389,15 @@ def main() -> int:
             )
             print(
                 "PUBLICACOES 24-26: NAO EXECUTADAS",
+                flush=True,
+            )
+            status_final(estados)
+            return 0
+
+        if args.atualizar_paineis:
+            print(
+                "\nPAINEIS: ETAPAS 1-25 CONCLUIDAS; "
+                "PUBLICACAO DO HISTORICO NAO EXECUTADA",
                 flush=True,
             )
             status_final(estados)

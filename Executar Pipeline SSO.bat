@@ -13,7 +13,7 @@ set "MODO="
 set "AMBIENTE=MODO_NORMAL_PROD"
 
 if not "%~1"=="" (
-    if /I not "%~1"=="--teste-hml" (
+    if /I not "%~1"=="--teste-hml" if /I not "%~1"=="--atualizar-paineis" (
         echo ERRO: argumento nao autorizado.
         exit /b 2
     )
@@ -21,8 +21,12 @@ if not "%~1"=="" (
         echo ERRO: argumentos extras nao permitidos.
         exit /b 2
     )
-    set "MODO=--teste-hml"
-    set "AMBIENTE=TESTE_HML"
+    set "MODO=%~1"
+    if /I "%~1"=="--teste-hml" (
+        set "AMBIENTE=TESTE_HML"
+    ) else (
+        set "AMBIENTE=PROD_SEM_HISTORICO"
+    )
 )
 
 cd /d "%PROJETO%"
@@ -116,7 +120,7 @@ echo LOG: %BAT_LOG%
 echo ============================================================
 echo.
 
-powershell.exe -NoProfile -Command "& { try { if ($env:BAT_MODO -eq '--teste-hml') { & $env:BAT_PYTHON -u $env:BAT_SCRIPT --teste-hml 2>&1 | Tee-Object -FilePath $env:BAT_LOG -Append -ErrorAction Stop } else { & $env:BAT_PYTHON -u $env:BAT_SCRIPT 2>&1 | Tee-Object -FilePath $env:BAT_LOG -Append -ErrorAction Stop }; if ($null -eq $LASTEXITCODE) { exit 90 }; exit $LASTEXITCODE } catch { Write-Host 'ERRO: registro de log ou execucao falhou.'; exit 90 } }"
+"%BAT_PYTHON%" -u "%PROJETO%\backend\executar_pipeline_sso_console.py"
 
 set "CODIGO_ERRO=%ERRORLEVEL%"
 
