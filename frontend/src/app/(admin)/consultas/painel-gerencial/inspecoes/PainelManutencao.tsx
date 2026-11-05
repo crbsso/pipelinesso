@@ -6,8 +6,8 @@ import GraficoTipoInspecao, { TITULOS_INSPECOES, mesesDoRecorte, type MetaTipoIn
 import { FAMILIAS_MANUTENCAO, formatarDataManutencao, type InspecaoManutencao, type VisaoManutencao } from "@/lib/inspecoes/manutencao";
 
 const painel = "min-w-0 rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900";
-const campo = "w-full min-w-0 rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-800 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100";
-const botao = "rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-600 transition hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-600 disabled:opacity-40 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800";
+const campo = "w-full min-w-0 rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-800 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 focus:border-brand-300 focus:outline-none focus:ring-2 focus:ring-brand-500/15 dark:focus:border-brand-500";
+const botao = "rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-600 transition hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500 disabled:opacity-40 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800";
 const curto = (v: string) => TITULOS_INSPECOES[v] ?? v;
 type Resultado = { ano: string; dados: InspecaoManutencao[]; metasPorTipo?: MetaTipoInspecao[]; programacao?: ProgramacaoManutencao; erro?: string };
 
@@ -67,8 +67,8 @@ export default function PainelManutencao({ dadosIniciais, extracaoLocal, program
 
   return <section aria-label="Inspeções da manutenção" className="space-y-5 text-gray-900 dark:text-gray-100">
     <header className="flex flex-wrap items-start justify-between gap-3">
-      <div><p className="mb-2 text-xs font-semibold tracking-widest text-teal-700 uppercase dark:text-teal-300">Manutenção · Intranet O&M</p><h1 className="text-2xl font-semibold tracking-tight md:text-3xl">Cada inspeção, sua meta.</h1><p className="mt-2 max-w-2xl text-sm text-gray-500 dark:text-gray-400">Acompanhe cada tipo separadamente. Os filtros abaixo atualizam todos os gráficos.</p></div>
-      {dadosIniciais !== undefined && <span className="rounded-full bg-teal-50 px-3 py-1.5 text-xs font-medium text-teal-800 dark:bg-teal-950 dark:text-teal-200">Prévia · dados reais</span>}
+      <div><p className="mb-2 text-xs font-semibold tracking-widest text-brand-600 uppercase dark:text-brand-300">Manutenção · Intranet O&M</p><h1 className="text-2xl font-semibold tracking-tight md:text-3xl">Cada inspeção, sua meta.</h1><p className="mt-2 max-w-2xl text-sm text-gray-500 dark:text-gray-400">Acompanhe cada tipo separadamente. Os filtros abaixo atualizam todos os gráficos.</p></div>
+      {dadosIniciais !== undefined && <span className="rounded-full bg-brand-50 px-3 py-1.5 text-xs font-medium text-brand-700 dark:bg-brand-950 dark:text-brand-200">Prévia · dados reais</span>}
     </header>
 
     <div className={`${painel} p-4 md:p-5`}>
@@ -79,7 +79,7 @@ export default function PainelManutencao({ dadosIniciais, extracaoLocal, program
         <label className="flex min-w-0 flex-col gap-1.5 text-xs font-medium text-gray-500">Localização<select value={localizacao} className={campo} onChange={e => { setLocalizacao(e.target.value); setPagina(1); }}><option value="">Todas as localizações</option>{locais.map(v => <option key={v}>{v}</option>)}</select></label>
         <label className="flex min-w-0 flex-col gap-1.5 text-xs font-medium text-gray-500">Tipo de inspeção<select value={familia} className={campo} onChange={e => { setFamilia(e.target.value); setDetalhe(null); }}><option value="">Todos os tipos</option>{familias.map(v => <option key={v} value={v}>{curto(v)}</option>)}</select></label>
       </div>
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-3"><p className="text-sm capitalize text-gray-500">{periodo}</p>{(concessao || localizacao || familia) && <button type="button" className="text-sm font-medium text-teal-700 dark:text-teal-300" onClick={limpar}>Limpar filtros</button>}</div>
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-3"><p className="text-sm capitalize text-gray-500">{periodo}</p>{(concessao || localizacao || familia) && <button type="button" className="text-sm font-medium text-brand-600 dark:text-brand-300" onClick={limpar}>Limpar filtros</button>}</div>
     </div>
 
     {!metaPendente && <p className="text-sm leading-6 text-gray-500">Cada gráfico compara as atividades de inspeção previstas nas OS com as atividades concluídas. Os formulários preenchidos podem ser consultados em Ver inspeções.</p>}
