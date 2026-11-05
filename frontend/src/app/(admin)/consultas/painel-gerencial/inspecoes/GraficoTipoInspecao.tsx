@@ -51,7 +51,7 @@ export default function GraficoTipoInspecao({ familia, dados, metas = [], mes, v
   const outrosEstados = metasPeriodo.reduce((s, d) => s + d.outrosEstados, 0);
   const modoAtividades = metas.length > 0;
   const realizado = modoAtividades ? (temMeta ? realizadasAtividades : null) : temDados ? registros.length : null;
-  const saldo = meta === null || realizado === null ? null : Math.max(0, meta - realizado);
+  const percentualConcluido = meta === null || meta <= 0 || realizado === null ? null : realizado / meta;
   const periodicidades = [...new Set(registrosFamilia.filter(d => !tipo || d.tipo === tipo).map(d => d.periodicidade).filter(Boolean))];
   const primeiroMes = Math.min(Number(mes.slice(5, 7)), ...[...mesesComDados].filter(m => m.startsWith(mes.slice(0, 4))).map(m => Number(m.slice(5, 7))));
   const mesesGrafico = visao === "mensal" ? Array.from({ length: Number(mes.slice(5, 7)) - primeiroMes + 1 }, (_, i) => `${mes.slice(0, 4)}-${String(primeiroMes + i).padStart(2, "0")}`) : mesesRecorte;
@@ -74,7 +74,7 @@ export default function GraficoTipoInspecao({ familia, dados, metas = [], mes, v
     <div className="mt-5 grid grid-cols-3 gap-2" aria-live="polite">
       <div><p className="text-xs text-gray-500">{!metaCompleta && temMeta ? "Meta parcial" : "Meta própria"}</p><p className="mt-1 text-2xl font-semibold tabular-nums">{meta === null ? "—" : numero(meta)}</p><p className="mt-1 text-xs text-gray-500">{meta === null ? "A vincular" : "Atividades previstas"}</p></div>
       <div><p className="text-xs text-gray-500">Realizado</p><p className="mt-1 text-2xl font-semibold tabular-nums text-brand-600 dark:text-brand-300">{realizado === null ? "—" : numero(realizado)}</p><p className="mt-1 text-xs text-gray-500">{modoAtividades ? "Atividades concluídas" : temDados ? "Formulários no recorte" : "Sem dados no recorte"}</p></div>
-      <div><p className="text-xs text-gray-500">Saldo</p><p className="mt-1 text-2xl font-semibold tabular-nums">{saldo === null ? "—" : numero(saldo)}</p><p className="mt-1 text-xs text-gray-500">{saldo === null ? "Depende da meta" : "Previstas − concluídas"}</p></div>
+      <div><p className="text-xs text-gray-500">% concluído</p><p className="mt-1 text-2xl font-semibold tabular-nums">{percentualConcluido === null ? "—" : percentualConcluido.toLocaleString("pt-BR", { style: "percent", maximumFractionDigits: 1 })}</p><p className="mt-1 text-xs text-gray-500">{meta === 0 ? "Sem atividades previstas" : percentualConcluido === null ? "Depende da meta" : !metaCompleta ? "Sobre a meta parcial" : "Da meta do período"}</p></div>
     </div>
     {modoAtividades && <p className="mt-4 text-xs text-gray-500">{tipo ? "A programação não está dividida por formulário. Volte a Todas as modalidades para comparar a meta deste tipo." : "Unidade: atividades de inspeção nas OS do PE-017."}</p>}
     <div className="mt-5 flex flex-wrap items-center gap-4 text-xs text-gray-500">
@@ -89,7 +89,7 @@ export default function GraficoTipoInspecao({ familia, dados, metas = [], mes, v
         </div><p className={`mt-2 text-center text-xs ${p.mes === mes ? "font-semibold text-brand-600 dark:text-brand-300" : "text-gray-500"}`}>{p.rotulo}</p>
       </div>)}
     </div>
-    {modoAtividades && <p className="mt-3 text-xs leading-5 text-gray-500">{numero(registros.length)} formulários registrados no recorte.{outrosEstados > 0 ? ` Há ${outrosEstados} atividade(s) em outros estados, incluída(s) no saldo.` : ""}</p>}
+    {modoAtividades && <p className="mt-3 text-xs leading-5 text-gray-500">{numero(registros.length)} formulários registrados no recorte.{outrosEstados > 0 ? ` Há ${outrosEstados} atividade(s) em outros estados, não contabilizada(s) como concluída(s).` : ""}</p>}
     <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-gray-100 pt-3 text-xs dark:border-gray-800">
       <span className="text-gray-500">{cobertura < mesesRecorte.length ? `Recorte parcial · ${cobertura}/${mesesRecorte.length} meses disponíveis` : `${mesesRecorte.length === 1 ? "Mês" : "Período"} disponível na extração`}</span>
       <button type="button" className="font-medium text-brand-600 dark:text-brand-300" onClick={() => onDetalhar(familia, tipo)}>Ver inspeções →</button>
