@@ -1,0 +1,7 @@
+@import "../../src/app/globals.css";
+@source "../../src/app/(admin)/consultas/painel-gerencial/inspecoes";
+@source "./";
+body { margin: 0; font-family: Arial, sans-serif; background: #f8fafb; }
+button, select, input, summary { font: inherit; }
+button { cursor: pointer; }
+button:disabled { opacity: .4; cursor: default; }
