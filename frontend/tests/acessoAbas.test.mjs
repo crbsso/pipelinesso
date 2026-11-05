@@ -150,3 +150,12 @@ test('manutencao: API autenticada entrega snapshots com metas por atividade e na
   assert.equal(falha.status,503);assert.doesNotMatch(await falha.text(),/duplicada|fixture|segredo/i);
  }finally{for(const k of ['NODE_ENV','SUPABASE_URL','NEXT_PUBLIC_SUPABASE_URL','SUPABASE_SECRET_KEY']){if(anterior[k]===undefined)delete process.env[k];else process.env[k]=anterior[k];}}
 });
+test('manutencao: producao permite a aba autorizada e continua negando perfil sem acesso',async()=>{
+ const anterior={...process.env};process.env.NODE_ENV='production';process.env.SUPABASE_URL='https://lkhidajhsqgebjltyicb.supabase.co';process.env.NEXT_PUBLIC_SUPABASE_URL=process.env.SUPABASE_URL;process.env.SUPABASE_SECRET_KEY='fixture_sem_segredo_real';
+ try {
+  const estado={contexto:contexto(['inspecoes']),registros:[]};const {GET}=ambiente(estado)('app/api/inspecoes/manutencao/route.ts');
+  assert.equal((await GET(new Request('https://portal.test/api/inspecoes/manutencao?ano=2026'))).status,200);
+  const antes=estado.consultasPrivilegiadas;estado.contexto=contexto([]);
+  assert.equal((await GET(new Request('https://portal.test/api/inspecoes/manutencao?ano=2026'))).status,403);assert.equal(estado.consultasPrivilegiadas,antes);
+ }finally{for(const k of ['NODE_ENV','SUPABASE_URL','NEXT_PUBLIC_SUPABASE_URL','SUPABASE_SECRET_KEY']){if(anterior[k]===undefined)delete process.env[k];else process.env[k]=anterior[k];}}
+});
