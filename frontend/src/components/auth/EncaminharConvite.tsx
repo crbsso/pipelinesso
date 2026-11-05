@@ -6,7 +6,7 @@ export default function EncaminharConvite() {
     const url = new URL(window.location.href);
     if (url.pathname === "/aceitar-convite") return;
     const hash = new URLSearchParams(url.hash.slice(1));
-    if (hash.get("type") === "invite" && hash.has("access_token") && hash.has("refresh_token"))
+    if (["invite", "recovery"].includes(hash.get("type") ?? "") && hash.has("access_token") && hash.has("refresh_token"))
       window.location.replace("/aceitar-convite" + url.hash);
   }, []);
   return null;

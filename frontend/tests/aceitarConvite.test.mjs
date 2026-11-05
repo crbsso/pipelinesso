@@ -23,8 +23,15 @@ test("template com token hash também valida uma única vez no modo estrito do R
  const a=ambiente("https://portal.exemplo.test/aceitar-convite?type=invite&token_hash=fixture_hash");await a.executar();assert.deepEqual(a.estado.verificacoes,[{type:"invite",token_hash:"fixture_hash"}]);assert.deepEqual(a.estado.trocas,["/atualizar-senha"]);
 });
 test("convite inválido ou expirado não leva à definição de senha",async()=>{
- for(const url of ["https://portal.exemplo.test/aceitar-convite","https://portal.exemplo.test/aceitar-convite#type=recovery&access_token=x&refresh_token=y"]){
+ for(const url of ["https://portal.exemplo.test/aceitar-convite","https://portal.exemplo.test/aceitar-convite#type=signup&access_token=x&refresh_token=y"]){
   const a=ambiente(url);await a.executar();assert.equal(a.estado.sessao.length,0);assert.equal(a.estado.trocas.length,0);assert.match(a.estado.erros[0],/inválido ou expirou/);
  }
  const a=ambiente("https://portal.exemplo.test/aceitar-convite?type=invite&token_hash=fixture_expirado",true);await a.executar();assert.equal(a.estado.trocas.length,0);assert.equal(a.estado.erros.length,1);
+});
+
+test("novo link de senha aceita recovery por fragmento e por token hash",async()=>{
+ const a=ambiente("https://portal.exemplo.test/aceitar-convite#type=recovery&access_token=fixture_access&refresh_token=fixture_refresh");await a.executar();
+ assert.deepEqual(a.estado.trocas,["/atualizar-senha"]);assert.equal(a.estado.sessao.length,1);
+ const b=ambiente("https://portal.exemplo.test/aceitar-convite?type=recovery&token_hash=fixture_hash");await b.executar();
+ assert.deepEqual(b.estado.verificacoes,[{type:"recovery",token_hash:"fixture_hash"}]);assert.deepEqual(b.estado.trocas,["/atualizar-senha"]);
 });

@@ -120,5 +120,11 @@ test("solicitação aprovada sem conta permite escolher perfil explicitamente e 
 test("liberação com falha de envio exibe perfil e reenvio sem conceder outro perfil",()=>{
  const Tela=componente("LiberarSolicitacao",{"/api/gestao/contexto":{usuarios:true,permissoes:true,solicitacoes_acesso:true}});
  const html=renderToStaticMarkup(React.createElement(Tela,{solicitacao:{id:"s1",status:"APROVADO",liberado_em:"2026-11-05T15:00:00Z",perfil_liberado_nome:"TST",convite_status:"FALHOU"},observacao:"",concluir(){}}));
- assert.match(html,/Perfil liberado/);assert.match(html,/TST/);assert.match(html,/envio do convite falhou/);assert.match(html,/Reenviar convite/);assert.doesNotMatch(html,/type="radio"/);
+ assert.match(html,/Perfil liberado/);assert.match(html,/TST/);assert.match(html,/envio do convite falhou/);assert.match(html,/Reenviar link de acesso/);assert.doesNotMatch(html,/type="radio"/);
+});
+
+test("conta confirmada mantém disponível o envio de link para definir senha",()=>{
+ const Tela=componente("LiberarSolicitacao",{"/api/gestao/contexto":{usuarios:true,permissoes:true,solicitacoes_acesso:true}});
+ const html=renderToStaticMarkup(React.createElement(Tela,{solicitacao:{id:"s1",status:"APROVADO",liberado_em:"2026-11-05T15:00:00Z",perfil_liberado_nome:"TST",convite_status:"CONTA_EXISTENTE"},observacao:"",concluir(){}}));
+ assert.match(html,/Enviar link para definir senha/);assert.doesNotMatch(html,/type="radio"/);
 });

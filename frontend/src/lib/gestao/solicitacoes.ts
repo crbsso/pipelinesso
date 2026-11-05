@@ -2,6 +2,7 @@ import { executarGestao, falhaBanco, jsonGestao, type ClienteGestao } from "./ht
 import { requirePermission } from "../auth/requirePermission.ts";
 type Resultado = { solicitacao: Record<string, unknown>; conta: { id: string; confirmado: boolean } | null };
 export interface AdminConvites {
+  resetPasswordForEmail(email: string, opcoes: { redirectTo: string }): PromiseLike<{ error: unknown }>;
   createUser(dados: { email: string; email_confirm: false }): PromiseLike<{ data: { user: { id: string } | null }; error: unknown }>;
   inviteUserByEmail(email: string, opcoes: { redirectTo: string }): PromiseLike<{ data: { user: { id: string } | null }; error: unknown }>;
 }
@@ -51,7 +52,15 @@ export function analisarSolicitacao(request: Request, id: string, criarCliente: 
       if (typeof solicitacao?.email_corporativo !== "string" || typeof solicitacao.convite_tentativa_id !== "string" || !envio.conta)
         return jsonGestao({ error: "A liberação foi registrada, mas o convite precisa ser conferido. Atualize a tela." }, 503);
       let status: "ENVIADO" | "FALHOU" | "CONTA_EXISTENTE" = "CONTA_EXISTENTE";
-      if (!envio.conta.confirmado) {
+      const definirSenha = envio.conta.confirmado && dados.acao === "REENVIAR_CONVITE";
+      if (definirSenha) {
+        status = "FALHOU";
+        try {
+          admin ??= criarAdmin();
+          const recuperacao = await admin.resetPasswordForEmail(solicitacao.email_corporativo, { redirectTo: retorno });
+          if (!recuperacao.error) status = "ENVIADO";
+        } catch { /* A falha fica registrada para nova tentativa autorizada. */ }
+      } else if (!envio.conta.confirmado) {
         status = "FALHOU";
         try {
           admin ??= criarAdmin();
@@ -65,8 +74,9 @@ export function analisarSolicitacao(request: Request, id: string, criarCliente: 
       if (registro.error)
         return jsonGestao({ error: "A liberação foi registrada, mas não foi possível registrar o resultado do convite. Atualize a tela antes de reenviar." }, 503);
       return jsonGestao({ ...(registro.data as object), mensagem: status === "ENVIADO"
-        ? "Acesso liberado. O serviço de e-mail aceitou o convite para envio; o destinatário poderá definir a senha pelo link."
-        : status === "CONTA_EXISTENTE" ? "Acesso liberado. Esta conta já está confirmada e pode usar o login existente."
+        ? definirSenha ? "O serviço de e-mail aceitou o envio de um novo link para definir a senha. Use o e-mail mais recente."
+          : "Acesso liberado. O serviço de e-mail aceitou o convite para envio; o destinatário poderá definir a senha pelo link."
+        : status === "CONTA_EXISTENTE" ? "Acesso liberado. O e-mail desta conta já está confirmado. Se a pessoa precisar definir a senha, use Enviar link para definir senha."
         : "O perfil foi vinculado, mas o serviço de e-mail não confirmou o envio do convite. Confira a configuração de e-mail e use Reenviar convite.",
         conviteEnviado: status === "ENVIADO" });
     },

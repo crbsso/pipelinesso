@@ -51,13 +51,13 @@ export default function LiberarSolicitacao({ solicitacao, observacao, concluir, 
       <p role="alert" className="text-sm text-amber-800">{contexto.erro || "Liberar perfis e convites exige gestão de solicitações, usuários e permissões."}</p> :
       liberado ? <>
         <p className="text-sm">Perfil liberado: <strong>{solicitacao.perfil_liberado_nome}</strong></p>
-        <p className="text-sm text-gray-600">{solicitacao.convite_status === "ENVIADO" ? "Convite aceito pelo serviço de e-mail para envio."
-          : solicitacao.convite_status === "CONTA_EXISTENTE" ? "A conta já está confirmada. A pessoa pode usar o login existente."
+        <p className="text-sm text-gray-600">{solicitacao.convite_status === "ENVIADO" ? "Solicitação de envio aceita pelo serviço de e-mail."
+          : solicitacao.convite_status === "CONTA_EXISTENTE" ? "O e-mail da conta já está confirmado. Se a pessoa ainda precisar definir a senha, envie um novo link."
           : solicitacao.convite_status === "FALHOU" ? "O envio do convite falhou. É possível tentar novamente."
           : solicitacao.convite_status === "PROCESSANDO" ? "O envio está sendo processado. Se não concluir, tente novamente após um minuto."
           : "O convite ainda não foi enviado."}</p>
-        {solicitacao.convite_status !== "CONTA_EXISTENTE" && <button type="button" className={secundario} disabled={ocupado} onClick={() => void enviar(true)}>
-          {ocupado ? "Enviando..." : "Reenviar convite"}</button>}
+        {<button type="button" className={secundario} disabled={ocupado} onClick={() => void enviar(true)}>
+          {ocupado ? "Enviando..." : solicitacao.convite_status === "CONTA_EXISTENTE" ? "Enviar link para definir senha" : "Reenviar link de acesso"}</button>}
       </> : <>
         {solicitacao.status === "APROVADO" && <p className="text-sm text-amber-800">A solicitação foi aprovada anteriormente. Conclua a liberação escolhendo o perfil e enviando o convite.</p>}
         <fieldset className="space-y-2" disabled={ocupado}><legend className="mb-2 text-sm font-medium">Qual perfil liberar?</legend>
