@@ -57,7 +57,7 @@ export function analisarSolicitacao(request: Request, id: string, criarCliente: 
         status = "FALHOU";
         try {
           admin ??= criarAdmin();
-          const recuperacao = await admin.resetPasswordForEmail(solicitacao.email_corporativo, { redirectTo: retorno });
+          const recuperacao = await admin.resetPasswordForEmail(solicitacao.email_corporativo, { redirectTo: new URL(retorno).origin });
           if (!recuperacao.error) status = "ENVIADO";
         } catch { /* A falha fica registrada para nova tentativa autorizada. */ }
       } else if (!envio.conta.confirmado) {
