@@ -444,8 +444,24 @@ def validar_local(registros):
     if any(r.get("situacao_gerencial") not in SITUACOES_ACOES_VALIDAS for r in registros):
         raise RuntimeError("Situacao gerencial invalida no Ouro.")
     for r in registros:
-        if int(r.get("divergencia_status_prazo") or 0) != 0:
-            raise RuntimeError("Divergencia fonte x prazo na Acao " + str(r.get("acao_corretiva_id")))
+        # Preservar divergencias validas, rejeitando sinalizadores incoerentes.
+        indicador = r.get("divergencia_status_prazo")
+        estado = str(r.get("estado_acao_fonte") or "").strip().casefold()
+        situacao = str(r.get("situacao_prazo_calculada") or "").strip()
+
+        esperado = int(
+            (estado == "aberto" and situacao == "VENCIDO")
+            or (
+                estado == "atrasado"
+                and situacao in {"EM_PRAZO", "VENCE_HOJE"}
+            )
+        )
+
+        if indicador not in (0, 1) or indicador != esperado:
+            raise RuntimeError(
+                "Indicador de divergencia inconsistente na Acao "
+                + str(r.get("acao_corretiva_id"))
+            )
         origem = int(r.get("registros_origem") or 0)
         duplicado = int(r.get("duplicado_origem") or 0)
         if origem < 1 or duplicado not in (0, 1) or duplicado != int(origem > 1):

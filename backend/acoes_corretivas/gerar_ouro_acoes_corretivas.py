@@ -754,27 +754,29 @@ def validar_ouro(
             "Existem IDs duplicados no Ouro."
         )
 
-    # Contagem dinamica; demais quality gates sao preservados.
 
-    divergencias = sum(
-        int(
-            registro.get(
-                "divergencia_status_prazo"
-            )
-            or 0
-        )
-        for registro in registros
-    )
+    # Divergencia fonte x prazo deve ser registrada e preservada.
+    # Bloquear apenas sinalizadores invalidos ou incoerentes.
+    for registro in registros:
+        indicador = registro.get("divergencia_status_prazo")
+        estado = normalizar(registro.get("estado_acao_fonte"))
+        situacao = str(
+            registro.get("situacao_prazo_calculada") or ""
+        ).strip()
 
-    if divergencias != 0:
-
-        raise RuntimeError(
-            "Existem divergencias entre "
-            "estado da fonte e prazo calculado: "
-            + str(
-                divergencias
+        esperado = int(
+            (estado == "aberto" and situacao == "VENCIDO")
+            or (
+                estado == "atrasado"
+                and situacao in {"EM_PRAZO", "VENCE_HOJE"}
             )
         )
+
+        if indicador not in (0, 1) or indicador != esperado:
+            raise RuntimeError(
+                "Indicador de divergencia inconsistente na Acao "
+                + str(registro.get("acao_corretiva_id"))
+            )
 
 
     sem_grupo = [
