@@ -5,14 +5,13 @@ import { createClient } from "@/lib/supabase/server";
 
 const privateHeaders = {
   "Cache-Control": "private, no-store, max-age=0",
-  "Referrer-Policy": "no-referrer",
+  // Omite caminho/token sem tornar Origin null no POST do formulário nativo.
+  "Referrer-Policy": "strict-origin",
   "X-Content-Type-Options": "nosniff",
 };
 
 function redirect(request: NextRequest, valid: boolean, status = 303) {
-  const url = request.nextUrl.clone();
-  url.search = "";
-  url.pathname = valid ? "/atualizar-senha" : "/signin";
+  const url = new URL(valid ? "/atualizar-senha" : "/signin", process.env.PORTAL_SSO_ORIGIN ?? request.url);
   if (!valid) url.searchParams.set("erro", "recuperacao-invalida");
   const response = NextResponse.redirect(url, status);
   for (const [key, value] of Object.entries(privateHeaders)) response.headers.set(key, value);

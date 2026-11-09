@@ -23,6 +23,7 @@ const auth = createServer(async (req, res) => {
   const path = new URL(req.url, "http://localhost").pathname;
   if (path === "/auth/v1/verify" && req.method === "POST") {
     verifyCalls++;
+    if (process.argv.includes("--browser")) console.log("Auth local: confirmação recebida (" + verifyCalls + ").");
     let body = ""; for await (const chunk of req) body += chunk;
     const input = JSON.parse(body);
     if (consumed || input.type !== "recovery" || input.token_hash !== "fixture_integration_hash") {
@@ -58,6 +59,16 @@ try {
     await new Promise(resolve => setTimeout(resolve, 300));
   }
   const link = appOrigin + "/auth/confirm?type=recovery&token_hash=fixture_integration_hash";
+  if (process.argv.includes("--browser")) {
+    console.log("BROWSER_URL=" + link);
+    console.log("Aguardando verificação do formulário no navegador. Envie Enter para encerrar.");
+    process.stdin.resume();
+    await once(process.stdin, "data");
+    process.stdin.pause();
+    assert.equal(verifyCalls, 1);
+    assert.equal(consumed, true);
+    console.log("PASS: confirmação pelo navegador chegou uma vez ao Auth simulado.");
+  } else {
   for (const method of ["GET", "GET", "HEAD"]) {
     const r = await fetch(link, { method, redirect: "manual", signal: AbortSignal.timeout(120000) });
     assert.equal(r.status, 200); assert.match(r.headers.get("cache-control"), /no-store/);
@@ -68,7 +79,7 @@ try {
   const form = { method: "POST", redirect: "manual", body: "type=recovery&token_hash=fixture_integration_hash",
     headers: { origin: appOrigin, "content-type": "application/x-www-form-urlencoded", "sec-fetch-site": "same-origin" } };
   const r = await fetch(appOrigin + "/auth/confirm", form);
-  assert.equal(r.status, 303); assert.equal(new URL(r.headers.get("location")).pathname, "/atualizar-senha");
+  assert.equal(r.status, 303); assert.equal(r.headers.get("location"), appOrigin + "/atualizar-senha");
   const cookies = r.headers.getSetCookie().filter(c => /sb-.*auth-token/.test(c));
   assert.ok(cookies.length > 0, "Next deve enviar os cookies da sessão no redirecionamento");
   const cookie = cookies.map(c => c.split(";")[0]).join("; ");
@@ -79,7 +90,9 @@ try {
   console.log("PASS: proxy reconheceu sessão e a tela de nova senha foi renderizada.");
   const reused = await fetch(appOrigin + "/auth/confirm", { ...form, headers: { ...form.headers, cookie } });
   assert.equal(reused.status, 303); assert.match(reused.headers.get("location"), /recuperacao-invalida$/);
+  assert.equal(new URL(reused.headers.get("location")).origin, appOrigin);
   console.log("PASS: token reutilizado rejeitado mesmo com cookie de sessão existente.");
+  }
 } catch (error) {
   console.error(serverOutput.slice(-4000)); throw error;
 } finally {

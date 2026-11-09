@@ -37,7 +37,7 @@ test("abrir ou pré-carregar link recovery repetidamente não consome token nem 
     assert.equal(response.status, 200);
     assert.match(await response.text(), /method="post"/);
     assert.match(response.headers.get("cache-control"), /no-store/);
-    assert.equal(response.headers.get("referrer-policy"), "no-referrer");
+    assert.equal(response.headers.get("referrer-policy"), "strict-origin");
     assert.match(response.headers.get("content-security-policy"), /frame-ancestors 'none'/);
   }
   assert.equal(a.created(), 0);
