@@ -57,7 +57,7 @@ test("rejeitar continua possível com a capacidade de analisar solicitações e 
 test("reenvio para conta confirmada envia link de senha sem recriar conta ou alterar perfil",async()=>{
  const a=ambiente();a.estado.confirmado=true;const r=await a.executar({acao:"REENVIAR_CONVITE"});const corpo=await r.json();
  assert.equal(r.status,200);assert.equal(a.estado.criados.length,0);assert.equal(a.estado.convites.length,0);
- assert.deepEqual(a.estado.redefinicoes,[{email:"destinatario@exemplo.test",opcoes:{redirectTo:origem+"/aceitar-convite"}}]);
+ assert.deepEqual(a.estado.redefinicoes,[{email:"destinatario@exemplo.test",opcoes:{redirectTo:origem}}]);
  assert.deepEqual(a.estado.ops.map(o=>o.p_operacao),["preparar_convite","registrar_convite"]);
  assert.equal(corpo.solicitacao.convite_status,"ENVIADO");assert.match(corpo.mensagem,/novo link para definir a senha/);
 });

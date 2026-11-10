@@ -76,7 +76,7 @@ test("origem externa, origem ausente e formato incorreto são rejeitados antes d
 });
 
 test("parâmetros ausentes, duplicados ou injetados não chegam à validação", async () => {
-  for (const body of ["", "type=invite&token_hash=fixture_hash", "type=recovery&token_hash=%22%3E%3Cscript%3E",
+  for (const body of ["", "type=signup&token_hash=fixture_hash", "type=recovery&token_hash=%22%3E%3Cscript%3E",
     "type=recovery&type=invite&token_hash=x", "type=recovery&token_hash=x&token_hash=y",
     "type=recovery&token_hash=" + "x".repeat(3000)]) {
     const a = ambiente();
@@ -91,10 +91,39 @@ test("parâmetros ausentes, duplicados ou injetados não chegam à validação",
   assert.equal(a.created(), 0);
 });
 
-test("convite GET mantém o comportamento anterior", async () => {
+for (const type of ["invite", "recovery"]) {
+  test(type + ": GET repetido não usa nem troca uma sessão já existente", async () => {
+    const a = ambiente();
+    for (let i = 0; i < 3; i++) {
+      const response = await a.GET(new NextRequest(url + "?type=" + type + "&token_hash=fixture_hash", { headers: { cookie: "sessao=existente" } }));
+      assert.equal(response.status, 200);
+      const html = await response.text();
+      assert.match(html, /method="post"/);
+      assert.match(html, /criar uma nova senha/);
+      assert.doesNotMatch(html, /window.location|http-equiv="refresh"/);
+    }
+    assert.equal(a.created(), 0);
+  });
+  test(type + ": só o POST válido leva à nova senha; token inválido não aproveita sessão prévia", async () => {
+    const a = ambiente();
+    const response = await a.POST(post("type=" + type + "&token_hash=fixture_hash", { cookie: "sessao=existente" }));
+    assert.equal(response.status, 303);
+    assert.equal(response.headers.get("location"), "https://portal.exemplo.test/atualizar-senha");
+    assert.deepEqual(a.calls, [{ type, token_hash: "fixture_hash" }]);
+    const b = ambiente({ expired: true });
+    const bad = await b.POST(post("type=" + type + "&token_hash=fixture_hash", { cookie: "sessao=existente" }));
+    assert.match(bad.headers.get("location"), /recuperacao-invalida$/);
+  });
+}
+
+test("modelo de convite aponta para confirmação no portal sem depender do redirect de sessão", async () => {
+  const template = readFileSync(new URL("../../supabase/templates/invite.html", import.meta.url), "utf8");
+  const href = template.match(/href="([^"]+)"/)[1];
+  const rendered = href.replace("{{ .SiteURL }}", "https://portal.exemplo.test").replace("{{ .TokenHash }}", "fixture_hash");
   const a = ambiente();
-  const response = await a.GET(new NextRequest(url + "?type=invite&token_hash=fixture_hash"));
-  assert.deepEqual(a.calls, [{ type: "invite", token_hash: "fixture_hash" }]);
-  assert.equal(response.status, 307);
-  assert.equal(response.headers.get("location"), "https://portal.exemplo.test/atualizar-senha");
+  const response = await a.GET(new NextRequest(rendered));
+  assert.equal(new URL(rendered).pathname, "/auth/confirm");
+  assert.equal(response.status, 200);
+  assert.match(await response.text(), /Continuar e criar minha senha/);
+  assert.equal(a.created(), 0);
 });
