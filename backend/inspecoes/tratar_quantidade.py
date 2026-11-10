@@ -2,6 +2,8 @@
 from collections import Counter, defaultdict
 from datetime import datetime, date
 import csv
+import hashlib
+import json
 import os
 import re
 import unicodedata
@@ -571,12 +573,78 @@ def carregar_regras_compostas():
     return regras
 
 
+def assinatura_registro_escopo(registro):
+    """Assinatura dos campos originais, sem armazenar dados pessoais no Git."""
+    def texto(valor):
+        if isinstance(valor, (datetime, date)):
+            return valor.isoformat()
+        if valor is None:
+            return ""
+        if isinstance(valor, float) and valor.is_integer():
+            return str(int(valor))
+        return str(valor).strip()
+
+    dados = {
+        campo: texto(valor)
+        for campo, valor in registro.items()
+        if not campo.startswith("_")
+    }
+    carga = json.dumps(
+        dados, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+    )
+    return hashlib.sha256(carga.encode("utf-8")).hexdigest()
+
+
+def carregar_excecao_6615():
+    arquivo = RAIZ / "backend/inspecoes/config/excecoes_escopo.csv"
+    if not arquivo.is_file():
+        raise RuntimeError("Excecao auditavel nao encontrada")
+
+    with arquivo.open(encoding="utf-8-sig", newline="") as entrada:
+        leitor = csv.DictReader(entrada, delimiter=";")
+        campos = {
+            "id_resposta", "area_organizacional", "nome_formulario",
+            "data_da_inspecao", "sha256_registro", "status",
+            "motivo", "origem_aprovacao", "ativo",
+        }
+        if not campos.issubset(set(leitor.fieldnames or [])):
+            raise RuntimeError("Colunas obrigatorias ausentes na excecao")
+        linhas = list(leitor)
+
+    if len(linhas) != 1:
+        raise RuntimeError("Apenas uma excecao esta autorizada")
+
+    regra = {k: str(v or "").strip() for k, v in linhas[0].items()}
+
+    if (
+        regra["id_resposta"] != "6615"
+        or regra["status"] != "PENDENTE_VERIFICACAO"
+        or regra["ativo"] != "SIM"
+        or regra["motivo"] != "PAIS_NAO_COMPROVADO"
+        or regra["origem_aprovacao"] != "APROVADO_USUARIO_20261110"
+        or len(regra["sha256_registro"]) != 64
+    ):
+        raise RuntimeError("Excecao diverge da autorizacao aprovada")
+
+    return regra
+
+
 def classificar_registros(
     registros,
     dimensao,
     regras_compostas,
 ):
 
+    excecao = carregar_excecao_6615()
+
+    ocorrencias_6615 = sum(
+        id_normalizado(r.get("id_resposta")) == "6615"
+        for r in registros
+    )
+    if ocorrencias_6615 > 1:
+        raise RuntimeError("Quality Gate: resposta 6615 duplicada na Bronze")
+
+    pendentes = 0
     desconhecidas = Counter()
 
     exemplos = defaultdict(
@@ -609,6 +677,35 @@ def classificar_registros(
         registro[
             "_prefixo_formulario"
         ] = prefixo
+
+        if id_normalizado(registro.get("id_resposta")) == "6615":
+            data = converter_data(registro.get("data_da_inspecao"))
+
+            consistente = (
+                str(area or "").strip() == excecao["area_organizacional"]
+                and str(formulario or "").strip() == excecao["nome_formulario"]
+                and data is not None
+                and data.date().isoformat() == excecao["data_da_inspecao"]
+                and assinatura_registro_escopo(registro)
+                    == excecao["sha256_registro"]
+            )
+
+            if not consistente:
+                raise RuntimeError(
+                    "Quality Gate: resposta 6615 mudou; revisar excecao"
+                )
+
+            registro["_escopo_calculado"] = "PENDENTE_VERIFICACAO"
+            registro["_fonte_classificacao"] = "EXCECAO_AUDITAVEL_ID_6615"
+
+            pendentes += 1
+
+            print(
+                "ESCOPO PENDENTE: ID=6615; "
+                "motivo=PAIS_NAO_COMPROVADO; "
+                "fora dos indicadores; Bronze preservada"
+            )
+            continue
 
         # ---------------------------------------------
         # REGRA 1
@@ -755,6 +852,7 @@ def classificar_registros(
             "area/prefixo nao classificadas."
         )
 
+    print(f"Excecoes pendentes auditadas: {pendentes}")
     print(
         "Quality Gate de escopo: APROVADO"
     )
@@ -777,6 +875,7 @@ def selecionar_brasil(
 
     brasil = []
     fora = 0
+    pendentes = 0
 
     for registro in registros:
 
@@ -794,12 +893,23 @@ def selecionar_brasil(
 
             fora += 1
 
+        elif escopo == "PENDENTE_VERIFICACAO":
+
+            if (id_normalizado(registro.get("id_resposta")) != "6615"
+                    or registro.get("_fonte_classificacao")
+                    != "EXCECAO_AUDITAVEL_ID_6615"):
+                raise RuntimeError("Excecao pendente nao autorizada")
+            pendentes += 1
+
         else:
 
             raise RuntimeError(
                 "Registro sem escopo calculado."
             )
 
+    print(f"Registros pendentes fora da Prata: {pendentes}")
+    if len(brasil) + fora + pendentes != len(registros):
+        raise RuntimeError("Quebra de reconciliacao do escopo")
     return brasil, fora
 
 
