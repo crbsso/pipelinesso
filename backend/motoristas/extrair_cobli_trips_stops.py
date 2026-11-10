@@ -125,75 +125,52 @@ def resolver_janela():
     return inicio, fim
 
 
-def requisitar(
-    url,
-    api_key,
-    body,
-):
-
+def requisitar(url, api_key, body):
     req = Request(
         url,
-        data=json.dumps(
-            body
-        ).encode("utf-8"),
+        data=json.dumps(body).encode("utf-8"),
         headers={
-            "accept":
-                "application/json",
-
-            "content-type":
-                "application/json",
-
-            "cobli-api-key":
-                api_key,
+            "accept": "application/json",
+            "content-type": "application/json",
+            "cobli-api-key": api_key,
         },
         method="POST",
     )
 
-    try:
+    for tentativa in range(1, 4):
+        try:
+            with urlopen(req, timeout=90) as resposta:
+                status = resposta.status
+                payload = json.loads(resposta.read().decode("utf-8"))
 
-        with urlopen(
-            req,
-            timeout=90,
-        ) as resposta:
+        except HTTPError as erro:
+            corpo = erro.read().decode("utf-8", errors="replace")
+            raise RuntimeError(
+                f"Erro HTTP Cobli. Status={erro.code}. Resposta={corpo[:500]}"
+            ) from erro
 
-            status = resposta.status
+        except (URLError, TimeoutError) as erro:
+            if tentativa == 3:
+                raise RuntimeError(
+                    "Falha de conexao Cobli apos 3 tentativas na pagina "
+                    f"{body.get('page')}: {type(erro).__name__}"
+                ) from erro
 
-            payload = json.loads(
-                resposta.read()
-                .decode("utf-8")
+            espera = 2 ** (tentativa - 1)
+
+            print(
+                f"Cobli: falha temporaria na pagina {body.get('page')}; "
+                f"nova tentativa {tentativa + 1}/3 em {espera}s.",
+                flush=True,
             )
 
-    except HTTPError as erro:
+            time.sleep(espera)
+            continue
 
-        corpo = (
-            erro.read()
-            .decode(
-                "utf-8",
-                errors="replace",
-            )
-        )
+        if status != 200:
+            raise RuntimeError(f"Status inesperado Cobli: {status}")
 
-        raise RuntimeError(
-            f"Erro HTTP Cobli. "
-            f"Status={erro.code}. "
-            f"Resposta={corpo[:500]}"
-        ) from erro
-
-    except URLError as erro:
-
-        raise RuntimeError(
-            f"Falha de conexao Cobli: "
-            f"{erro}"
-        ) from erro
-
-    if status != 200:
-
-        raise RuntimeError(
-            f"Status inesperado Cobli: "
-            f"{status}"
-        )
-
-    return payload
+        return payload
 
 
 def extrair():
