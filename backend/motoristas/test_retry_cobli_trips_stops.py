@@ -97,6 +97,47 @@ class TestRetryCobli(unittest.TestCase):
 
     @patch.object(modulo.time, "sleep")
     @patch.object(modulo, "urlopen")
+    def test_connection_reset_refaz_mesma_pagina(self, abrir, dormir):
+        abrir.side_effect = [
+            ConnectionResetError(10054, "conexao encerrada"),
+            RespostaFake(),
+        ]
+
+        resultado = modulo.requisitar(
+            "https://example.test", "fake-key", self.corpo
+        )
+
+        self.assertEqual(resultado["data"]["rows"], [{"id": 1}])
+        self.assertEqual(abrir.call_count, 2)
+        dormir.assert_called_once_with(1)
+
+        for chamada in abrir.call_args_list:
+            req = chamada.args[0]
+            self.assertEqual(json.loads(req.data), self.corpo)
+            self.assertEqual(req.get_method(), "POST")
+
+    @patch.object(modulo.time, "sleep")
+    @patch.object(modulo, "urlopen")
+    def test_connection_reset_esgota_tentativas(self, abrir, dormir):
+        abrir.side_effect = ConnectionResetError(
+            10054, "conexao encerrada"
+        )
+
+        with self.assertRaisesRegex(
+            RuntimeError,
+            "apos 3 tentativas na pagina 37: ConnectionResetError"
+        ):
+            modulo.requisitar(
+                "https://example.test", "fake-key", self.corpo
+            )
+
+        self.assertEqual(abrir.call_count, 3)
+        self.assertEqual(
+            dormir.call_args_list, [call(1), call(2)]
+        )
+
+    @patch.object(modulo.time, "sleep")
+    @patch.object(modulo, "urlopen")
     def test_json_invalido_sem_retry(self, abrir, dormir):
         resposta = RespostaFake()
         resposta.read = lambda: b"{not json}"

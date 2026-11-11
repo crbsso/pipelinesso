@@ -149,7 +149,7 @@ def requisitar(url, api_key, body):
                 f"Erro HTTP Cobli. Status={erro.code}. Resposta={corpo[:500]}"
             ) from erro
 
-        except (URLError, TimeoutError) as erro:
+        except (URLError, TimeoutError, ConnectionResetError) as erro:
             if tentativa == 3:
                 raise RuntimeError(
                     "Falha de conexao Cobli apos 3 tentativas na pagina "
