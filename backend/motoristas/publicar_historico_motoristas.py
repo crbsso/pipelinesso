@@ -954,9 +954,13 @@ def consultar_historico_hml(cliente):
     raise RuntimeError("Limite de paginacao da HML atingido; nao publicar.")
 
 
-def separar_ineditos(registros, remoto):
-    """Pula eventos existentes sem alterar historico; aborta se houver conflito."""
+def classificar_lote_incremental(registros, remoto):
+    """Separa eventos novos, existentes e complementacoes de fim.
+
+    Esta funcao nao escreve em banco nem altera registros historicos.
+    """
     chaves_remotas = {}
+
     for eid, linha in remoto.items():
         chave = chave_natural_rpc(linha)
         if chave in chaves_remotas and chaves_remotas[chave] != eid:
@@ -965,25 +969,174 @@ def separar_ineditos(registros, remoto):
 
     novos = []
     existentes = 0
+    complementacoes = []
     chaves_lote = set()
+
     for registro in registros:
         eid = registro["evento_id"]
         chave = chave_natural_rpc(registro)
+
         if chave in chaves_lote:
             raise RuntimeError("Chave natural duplicada na preparacao.")
         chaves_lote.add(chave)
 
         if eid in remoto:
-            if chave_identidade_temporal(remoto[eid]) != chave_identidade_temporal(registro):
-                raise RuntimeError("Mesmo evento_id com identidade temporal divergente.")
+            if (
+                chave_identidade_temporal(remoto[eid])
+                != chave_identidade_temporal(registro)
+            ):
+                raise RuntimeError(
+                    "Mesmo evento_id com identidade temporal divergente."
+                )
             existentes += 1
             continue
 
         if chave in chaves_remotas:
-            raise RuntimeError("Chave natural ja existente com evento_id diferente.")
+            eid_anterior = chaves_remotas[chave]
+            anterior = remoto[eid_anterior]
+
+            fim_anterior = normalizar_timestamp(anterior.get("fim"))
+            fim_observado = normalizar_timestamp(registro.get("fim"))
+
+            if not (
+                chave[1] == "VIAGEM"
+                and fim_anterior is None
+                and fim_observado is not None
+            ):
+                raise RuntimeError(
+                    "Conflito de chave natural nao e complementacao de fim."
+                )
+
+            complementacoes.append({
+                "evento_id_historico": eid_anterior,
+                "evento_id_observado": eid,
+                "vehicle_id_cobli": chave[0],
+                "inicio": chave[2],
+                "fim_observado": fim_observado,
+            })
+            continue
+
         novos.append(registro)
 
+    return novos, existentes, complementacoes
+
+
+def separar_ineditos(registros, remoto):
+    """Contrato de publicacao preservado: sem UPDATE automatico."""
+    novos, existentes, complementacoes = classificar_lote_incremental(
+        registros, remoto
+    )
+
+    if complementacoes:
+        raise RuntimeError(
+            "COMPLEMENTACAO_FIM_PENDENTE: "
+            f"{len(complementacoes)} viagens requerem conciliacao "
+            "historica autorizada. Nenhuma escrita iniciada."
+        )
+
     return novos, existentes
+
+
+def processar_complementacoes_hml(
+    registros, remoto, cliente, aplicar=False
+):
+    """Complementa apenas viagens na HML, sem alterar o historico.
+
+    A execucao normal do BAT nao utiliza esta funcao.
+    """
+    validar_contrato_local(registros)
+
+    novos, existentes, complementacoes = (
+        classificar_lote_incremental(registros, remoto)
+    )
+
+    if aplicar and os.getenv(
+        "SSO_HISTORICO_COMPLEMENTACAO_HML_AUTORIZADA"
+    ) != "SIM":
+        raise RuntimeError(
+            "Complementacao HML sem autorizacao especifica."
+        )
+
+    por_id = {r["evento_id"]: r for r in registros}
+    plano = []
+
+    # Validar todos os parametros antes da primeira escrita.
+    for item in complementacoes:
+        observado = por_id[item["evento_id_observado"]]
+        extraido = str(observado.get("extraido_em_utc") or "")
+
+        try:
+            data_extracao = datetime.fromisoformat(
+                extraido.replace("Z", "+00:00")
+            )
+        except ValueError as erro:
+            raise RuntimeError(
+                "Data de extracao invalida."
+            ) from erro
+
+        if (
+            data_extracao.tzinfo is None
+            or data_extracao.utcoffset() is None
+        ):
+            raise RuntimeError("Extracao sem fuso UTC.")
+
+        if item["fim_observado"] <= item["inicio"]:
+            raise RuntimeError(
+                "Complementacao sem termino posterior ao inicio."
+            )
+
+        plano.append({
+            "p_evento_id_historico": item["evento_id_historico"],
+            "p_evento_id_observado": item["evento_id_observado"],
+            "p_fim_observado": item["fim_observado"],
+            "p_extraido_em_utc": extraido,
+        })
+
+    resultado = {
+        "existentes": existentes,
+        "novos_nao_publicados": len(novos),
+        "complementacoes_identificadas": len(plano),
+        "registradas": 0,
+        "ja_registradas": 0,
+    }
+
+    if not aplicar:
+        return resultado
+
+    for parametros in plano:
+        try:
+            resposta = cliente.rpc(
+                "registrar_fim_complementar_motoristas_sso",
+                parametros,
+            ).execute()
+        except Exception as erro:
+            raise RuntimeError(
+                "RPC HML com resultado indeterminado. "
+                "Reconciliar antes de qualquer repeticao."
+            ) from erro
+
+        dados = resposta.data
+
+        if (
+            not isinstance(dados, dict)
+            or dados.get("situacao")
+            not in ("REGISTRADA", "JA_REGISTRADA")
+            or dados.get("evento_id_historico")
+            != parametros["p_evento_id_historico"]
+            or dados.get("evento_id_observado")
+            != parametros["p_evento_id_observado"]
+        ):
+            raise RuntimeError(
+                "Resposta RPC HML divergente. "
+                "Reconciliar antes de continuar."
+            )
+
+        if dados["situacao"] == "REGISTRADA":
+            resultado["registradas"] += 1
+        else:
+            resultado["ja_registradas"] += 1
+
+    return resultado
 
 
 def publicar_hml(registros):
@@ -1120,6 +1273,17 @@ def main():
         help="Exige contrato implantado, autorizacao e URL exata de producao.",
     )
     modos.add_argument(
+        "--diagnosticar-fim-hml",
+        action="store_true",
+        help="Classifica complementacoes em HML sem escrita.",
+    )
+    modos.add_argument(
+        "--registrar-fim-hml",
+        action="store_true",
+        help="Registra complementacoes somente em HML, com autorizacao.",
+    )
+
+    modos.add_argument(
         "--verificar-ambiente-prod", action="store_true",
         help="Verificacao exclusivamente de leitura; falha fechado se nao autorizado.",
     )
@@ -1154,6 +1318,20 @@ def main():
         if not os.getenv("COBLI_BRONZE_TRIPS_STOPS", "").strip():
             raise RuntimeError("Selecione uma Bronze explicita para HML.")
 
+    if args.diagnosticar_fim_hml or args.registrar_fim_hml:
+        validar_autorizacao_hml()
+        if not os.getenv("COBLI_BRONZE_TRIPS_STOPS", "").strip():
+            raise RuntimeError("Bronze HML explicita obrigatoria.")
+        if (
+            args.registrar_fim_hml
+            and os.getenv(
+                "SSO_HISTORICO_COMPLEMENTACAO_HML_AUTORIZADA"
+            ) != "SIM"
+        ):
+            raise RuntimeError(
+                "Autorizacao especifica da complementacao HML ausente."
+            )
+
     registros = preparar()
 
 
@@ -1178,6 +1356,28 @@ def main():
             "Supabase foi realizada."
         )
 
+        return
+
+    if args.diagnosticar_fim_hml or args.registrar_fim_hml:
+        url, chave = validar_autorizacao_hml()
+        cliente = create_client(url, chave)
+        remoto = consultar_historico_hml(cliente)
+
+        resultado = processar_complementacoes_hml(
+            registros,
+            remoto,
+            cliente,
+            aplicar=args.registrar_fim_hml,
+        )
+
+        for nome, valor in resultado.items():
+            print(f"HML {nome}: {valor}")
+
+        print(
+            "HML COMPLEMENTACAO: "
+            + ("EXECUCAO CONCLUIDA" if args.registrar_fim_hml
+               else "DIAGNOSTICO SOMENTE LEITURA")
+        )
         return
 
     if args.publicar_hml:
