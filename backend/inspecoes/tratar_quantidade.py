@@ -707,6 +707,18 @@ def classificar_registros(
             )
             continue
 
+        # CH identifica Chile no Prevsys; 6615 tratada antes.
+        escopo_area = dimensao.get(chave_area)
+        escopo_regra = regras_compostas.get((chave_area, prefixo))
+        if prefixo == "CH" and (
+            escopo_area == "BRASIL"
+            or (escopo_area is None and escopo_regra != "FORA_BRASIL")
+        ):
+            registro["_escopo_calculado"] = "FORA_BRASIL"
+            registro["_fonte_classificacao"] = "PREFIXO_CH_CHILE"
+            classificadas_regra += 1
+            continue
+
         # ---------------------------------------------
         # REGRA 1
         # Area historicamente validada pelo filtro
