@@ -251,7 +251,7 @@ export async function GET(request: NextRequest) {
     const colunas = "evento_id,tipo_evento,data_evento,ano_evento,mes_evento,inicio,fim,nome_exibicao,driver_id_cobli,situacao_motorista,coligada,secao_rm,placa,distancia_km,duracao_viagem_min,marcha_lenta_min";
 
     let consulta = supabase
-      .from("fato_motoristas_viagens")
+      .from("vw_motoristas_historico_fim_efetivo")
       .select(colunas, { count: "exact" });
 
     if (ano !== null) {
