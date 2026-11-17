@@ -45,7 +45,8 @@ export async function GET(request: Request) {
       if (!data.length && dados.length < esperado) throw new Error("Pagina incompleta");
       dados.push(...data);
     } while (dados.length < esperado);
-    return responder({ total: dados.length, ...(ano === null ? { mes } : { ano }), dados });
+    // A tabela legada não comprova a cobertura de meses sem registros.
+    return responder({ total: dados.length, ...(ano === null ? { mes } : { ano }), dados, posicoesCiclo: [], mesesCarregados: [] });
   } catch {
     return responder({ error: "Não foi possível carregar as inspeções da manutenção. Tente novamente." }, 503);
   }

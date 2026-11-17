@@ -1,4 +1,5 @@
 import type { InspecaoManutencao } from "./manutencao.ts";
+import { validarPosicoesCiclo, type MesCarregado, type PosicaoCiclo } from "./ciclosManutencao.ts";
 
 export type OrdemProgramada = {
   os_id: number; plano_id: number; concessao: string | null; localizacao: string | null;
@@ -61,10 +62,11 @@ export function construirMetas(programacao: ProgramacaoManutencao, atividades: A
 export type CargaMensalManutencao = {
   competencia: string; extraido_em: string; publicado_em?: string;
   conteudo: { versao: number; origem: string; dados: InspecaoManutencao[];
-    programacao: ProgramacaoManutencao; atividades: AtividadeProgramada[] };
+    programacao: ProgramacaoManutencao; atividades: AtividadeProgramada[]; posicoes_ciclo?: unknown };
 };
 export function consolidarCargas(cargas: CargaMensalManutencao[]) {
   const dados: InspecaoManutencao[] = [], atividades: AtividadeProgramada[] = [];
+  const posicoesCiclo: PosicaoCiclo[] = [], mesesCarregados: MesCarregado[] = [];
   const programacao: ProgramacaoManutencao = { inicio: "", fim_exclusivo: "", fim_realizacoes_exclusivo: "", ordens: [], vinculos: [] };
   const competencias = new Set<string>();
   for (const carga of [...cargas].sort((a, b) => a.competencia.localeCompare(b.competencia))) {
@@ -73,6 +75,18 @@ export function consolidarCargas(cargas: CargaMensalManutencao[]) {
     const c = carga.conteudo;
     if (c.versao !== 1 || c.origem !== "SQL Server Intranet" || !Array.isArray(c.dados) || !Array.isArray(c.atividades)) throw Error("Carga inválida.");
     if (c.programacao.inicio !== carga.competencia) throw Error("Cobertura mensal divergente.");
+    const extraido = new Date(carga.extraido_em);
+    if (!Number.isFinite(extraido.getTime())) throw Error("Data de extração inválida.");
+    const dataLocal = new Intl.DateTimeFormat("sv-SE", { timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit", day: "2-digit" }).format(extraido);
+    const [ano, mes] = carga.competencia.slice(0,7).split("-").map(Number);
+    const fimMes = new Date(Date.UTC(ano,mes,0)).toISOString().slice(0,10);
+    const corte = dataLocal < fimMes ? dataLocal : fimMes;
+    if (corte < carga.competencia) throw Error("Extração anterior à competência.");
+    // A extração existente consulta todas as fichas SESMT. O painel usa somente as sete aprovadas.
+    mesesCarregados.push({ mes: carga.competencia.slice(0,7), data_corte: corte, fichas: [1,11,13,15,16,17,18] });
+    const posicoes = validarPosicoesCiclo(c.posicoes_ciclo,carga.competencia);
+    if (posicoes.some(p => p.data_corte > dataLocal)) throw Error("Posição posterior à extração.");
+    posicoesCiclo.push(...posicoes);
     if (!programacao.inicio) programacao.inicio = c.programacao.inicio;
     programacao.fim_exclusivo = c.programacao.fim_exclusivo;
     programacao.fim_realizacoes_exclusivo = [programacao.fim_realizacoes_exclusivo, c.programacao.fim_realizacoes_exclusivo].sort().at(-1)!;
@@ -81,5 +95,5 @@ export function consolidarCargas(cargas: CargaMensalManutencao[]) {
     programacao.vinculos.push(...c.programacao.vinculos);
     atividades.push(...c.atividades);
   }
-  return { dados, programacao, metasPorTipo: construirMetas(programacao, atividades) };
+  return { dados, programacao, metasPorTipo: construirMetas(programacao, atividades), posicoesCiclo, mesesCarregados };
 }

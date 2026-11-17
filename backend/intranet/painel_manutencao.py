@@ -9,6 +9,10 @@ import subprocess
 import sys
 import uuid
 from urllib.parse import urlparse
+try:
+    from .ciclos_manutencao import validar_posicoes_ciclo
+except ImportError:
+    from ciclos_manutencao import validar_posicoes_ciclo
 
 RAIZ = Path(__file__).resolve().parents[2]
 HML_REF = "ckfsarzmudwdehiiltwi"
@@ -32,6 +36,7 @@ def preparar_cargas(documento):
     exigir(inicio.day == fim.day == 1 and 0 < (fim-inicio).days <= 93, "Janela deve conter meses completos, até 93 dias")
     extraido = datetime.fromisoformat(documento["extraido_em"].replace("Z", "+00:00"))
     exigir(extraido.tzinfo is not None, "Extração deve ter fuso")
+    posicoes = validar_posicoes_ciclo(documento.get("posicoes_ciclo", []), inicio, fim)
     dados, p, atividades = documento["registros"], documento["programacao"], documento["atividades"]
     exigir(isinstance(dados, list) and isinstance(atividades, list), "Coleções inválidas")
     exigir(p["inicio"] == inicio.isoformat() and p["fim_exclusivo"] == fim.isoformat(), "Cobertura divergente")
@@ -82,6 +87,8 @@ def preparar_cargas(documento):
                 "fim_realizacoes_exclusivo": p["fim_realizacoes_exclusivo"],
                 "ordens": ordens_mes, "vinculos": [v for v in vinculos if v["data_inspecao"][:7] == mes.isoformat()[:7]]},
             "atividades": [a for a in atividades if a["os_id"] in ids]}
+        if "posicoes_ciclo" in documento:
+            conteudo["posicoes_ciclo"] = [p for p in posicoes if p["data_corte"][:7] == mes.isoformat()[:7]]
         bruto = json.dumps(conteudo, sort_keys=True, ensure_ascii=False, separators=(",", ":")).encode()
         cargas.append({"competencia": mes.isoformat(), "carga_id": str(uuid.uuid4()),
             "extraido_em": extraido.astimezone(timezone.utc).isoformat(),

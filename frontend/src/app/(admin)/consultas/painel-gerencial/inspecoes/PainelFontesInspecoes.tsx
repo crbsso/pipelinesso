@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import PainelInspecoes from "./PainelInspecoes";
-import PainelManutencao from "./PainelManutencao";
+import PainelManutencao from "./PainelCiclosManutencao";
 
 export default function PainelFontesInspecoes({ manutencaoDisponivel }: { manutencaoDisponivel: boolean }) {
   const [fonte, setFonte] = useState("seguranca");
