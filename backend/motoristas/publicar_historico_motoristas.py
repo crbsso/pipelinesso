@@ -1021,17 +1021,173 @@ def classificar_lote_incremental(registros, remoto):
     return novos, existentes, complementacoes
 
 
-def separar_ineditos(registros, remoto):
-    """Contrato de publicacao preservado: sem UPDATE automatico."""
+def carregar_evidencia_conciliacoes_pendentes(complementacoes):
+    """Exige evidencia exata obtida de consulta remota autorizada."""
+    nome = "SSO_HISTORICO_CONCILIACOES_AUTORIZADAS_JSON"
+    bruto = os.getenv(nome, "").strip()
+
+    if not bruto:
+        raise RuntimeError("EVIDENCIA_CONCILIACOES_AUSENTE")
+
+    try:
+        dados = json.loads(bruto)
+    except (TypeError, ValueError) as erro:
+        raise RuntimeError("EVIDENCIA_JSON_INVALIDA") from erro
+
+    if not isinstance(dados, list):
+        raise RuntimeError("EVIDENCIA_FORMATO_INVALIDO")
+
+    evidencias = {}
+
+    for item in dados:
+        if not isinstance(item, dict) or set(item) != {
+            "evento_id_historico", "evento_id_observado"
+        }:
+            raise RuntimeError("EVIDENCIA_CAMPOS_INVALIDOS")
+
+        historico = item["evento_id_historico"]
+        observado = item["evento_id_observado"]
+
+        for identificador in (historico, observado):
+            if (
+                not isinstance(identificador, str)
+                or len(identificador) != 64
+                or any(c not in "0123456789abcdef"
+                       for c in identificador)
+            ):
+                raise RuntimeError("EVIDENCIA_ID_INVALIDO")
+
+        if historico in evidencias:
+            raise RuntimeError("EVIDENCIA_DUPLICADA")
+
+        evidencias[historico] = observado
+
+    esperados = {
+        item["evento_id_historico"]: item["evento_id_observado"]
+        for item in complementacoes
+    }
+
+    if evidencias != esperados:
+        raise RuntimeError("EVIDENCIA_IDENTIDADE_DIVERGENTE")
+
+    return evidencias
+
+
+def conferir_complementacoes_registradas(
+    cliente, complementacoes, remoto, registros
+):
+    """Somente leitura. Falha fechado diante de divergencias."""
+    ids = [c["evento_id_historico"] for c in complementacoes]
+
+    if len(ids) != len(set(ids)):
+        raise RuntimeError("Complementacoes historicas duplicadas.")
+
+    evidencias = carregar_evidencia_conciliacoes_pendentes(complementacoes)
+    encontrados = {}
+    ids_permitidos = set(ids)
+
+    for inicio_lote in range(0, len(ids), TAMANHO_LOTE):
+        lote = ids[inicio_lote:inicio_lote + TAMANHO_LOTE]
+        resposta = (
+            cliente.table("vw_motoristas_historico_fim_efetivo")
+            .select("evento_id,vehicle_id_cobli,tipo_evento,inicio,fim")
+            .in_("evento_id", lote)
+            .execute()
+        )
+        dados = resposta.data
+
+        if not isinstance(dados, list):
+            raise RuntimeError("Consulta de fim efetivo invalida.")
+
+        for linha in dados:
+            eid = str(linha.get("evento_id") or "").strip()
+            if eid not in ids_permitidos or eid in encontrados:
+                raise RuntimeError("Identidade da view divergente.")
+            encontrados[eid] = linha
+
+    if len(encontrados) != len(ids):
+        raise RuntimeError("Complementacao nao registrada na view.")
+
+    observados = {r["evento_id"]: r for r in registros}
+
+    for caso in complementacoes:
+        eid = caso["evento_id_historico"]
+        original = remoto.get(eid)
+        efetivo = encontrados[eid]
+        observado = observados.get(caso["evento_id_observado"])
+
+        if original is None or observado is None:
+            raise RuntimeError("Evento da conciliacao ausente.")
+
+        inicio_original = normalizar_timestamp(original.get("inicio"))
+        inicio_efetivo = normalizar_timestamp(efetivo.get("inicio"))
+        inicio_observado = normalizar_timestamp(observado.get("inicio"))
+        inicio_caso = normalizar_timestamp(caso["inicio"])
+
+        fim_efetivo = normalizar_timestamp(efetivo.get("fim"))
+        fim_observado = normalizar_timestamp(observado.get("fim"))
+        fim_caso = normalizar_timestamp(caso["fim_observado"])
+
+        veiculo = caso["vehicle_id_cobli"]
+
+        if (
+            original.get("tipo_evento") != "VIAGEM"
+            or efetivo.get("tipo_evento") != "VIAGEM"
+            or observado.get("tipo_evento") != "VIAGEM"
+            or normalizar_timestamp(original.get("fim")) is not None
+            or not inicio_original
+            or not fim_efetivo
+            or not (
+                inicio_original == inicio_efetivo
+                == inicio_observado == inicio_caso
+            )
+            or not (
+                original.get("vehicle_id_cobli")
+                == efetivo.get("vehicle_id_cobli")
+                == observado.get("vehicle_id_cobli")
+                == veiculo
+            )
+            or fim_efetivo != fim_observado
+            or fim_efetivo != fim_caso
+            or fim_efetivo <= inicio_original
+        ):
+            raise RuntimeError(
+                "COMPLEMENTACAO_FIM_NAO_CONCILIADA: " + eid
+            )
+
+        hash_calculado = hash_identidade_evento({
+            "vehicle_id_cobli": observado["vehicle_id_cobli"],
+            "inicio": observado["inicio"],
+            "fim": observado["fim"],
+            "tipo_evento": "VIAGEM",
+        })
+        id_registrado = evidencias[eid]
+
+        if (
+            len(id_registrado) != 64
+            or id_registrado != caso["evento_id_observado"]
+            or id_registrado != observado["evento_id"]
+            or hash_calculado != id_registrado
+        ):
+            raise RuntimeError(
+                "IDENTIDADE_OBSERVADA_DIVERGENTE: " + eid
+            )
+
+    print(
+        "COMPLEMENTACOES_PREVIAMENTE_REGISTRADAS:",
+        len(complementacoes)
+    )
+
+
+def separar_ineditos(registros, remoto, cliente):
+    """Publica somente novos; reconhece fins ja conciliados."""
     novos, existentes, complementacoes = classificar_lote_incremental(
         registros, remoto
     )
 
     if complementacoes:
-        raise RuntimeError(
-            "COMPLEMENTACAO_FIM_PENDENTE: "
-            f"{len(complementacoes)} viagens requerem conciliacao "
-            "historica autorizada. Nenhuma escrita iniciada."
+        conferir_complementacoes_registradas(
+            cliente, complementacoes, remoto, registros
         )
 
     return novos, existentes
@@ -1147,7 +1303,7 @@ def publicar_hml(registros):
         raise RuntimeError("Selecione explicitamente COBLI_BRONZE_TRIPS_STOPS.")
     cliente = create_client(url, chave)
     remoto = consultar_historico_hml(cliente)
-    novos, existentes = separar_ineditos(registros, remoto)
+    novos, existentes = separar_ineditos(registros, remoto, cliente)
     total_antes = len(remoto)
 
     print("HML: existentes no lote=", existentes,
@@ -1207,7 +1363,7 @@ def publicar_producao(registros):
         raise RuntimeError("Bronze Cobli desta execucao deve ser explicitamente selecionada.")
     cliente = create_client(url, chave)
     remoto = consultar_historico_hml(cliente)
-    novos, existentes = separar_ineditos(registros, remoto)
+    novos, existentes = separar_ineditos(registros, remoto, cliente)
     total_antes = len(remoto)
     print("PRODUCAO: existentes no lote=", existentes,
           "novos=", len(novos), "historico inicial=", total_antes)
