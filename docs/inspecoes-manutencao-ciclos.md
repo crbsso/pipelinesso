@@ -56,3 +56,11 @@ Antes da disponibilização: gerar e conferir as posições na extração SQL op
 - A credencial SQL protegida pôde ser carregada, mas a abertura da conexão de origem falhou; não foi realizada nova extração. As consultas conferidas em 16/17 de novembro continuam como evidência local, sem substituir a carga de 5 de novembro.
 - A conexão Vercel lista a equipe Segurança_Celeo, mas não retorna seus projetos. Foi solicitada autorização de acesso à equipe. Não foi criado outro projeto nem alterado o domínio existente.
 - Publicação de dados e alteração da versão em produção permanecem pendentes. Não incorporar as posições de 16/17 de novembro a uma carga extraída em 5 de novembro: isso falsificaria a atualização dos registros.
+
+### Revisão enviada em 18/11/2026
+
+- [Pull request 28](https://github.com/crbsso/pipelinesso/pull/28), branch `feat/inspecoes-manutencao-ciclos-20261117`, criada pelo fluxo automático do repositório após o envio da branch. A referência remota do PR e da branch foi conferida contra `d5a5e022346b75891508e024238d527d22a95cfb` (código testado).
+- Os commits de implementação são `e5e9ce3` (Next.js 16.4.6) e `d5a5e02` (painel por ciclo). A branch foi baseada em `origin/main` `e821c84`, sem alterações de produção posteriores na conferência de envio.
+- Nova tentativa de leitura SQL em 18/11 falhou na abertura da conexão (`SqlException`, número -1), após a leitura bem-sucedida da credencial protegida. Nenhuma extração ou publicação foi executada.
+- O acesso Vercel continua retornando uma lista vazia de projetos da equipe. Foi solicitada nova autorização ao usuário, pois o link anterior expirou.
+- O leitor de verificações do PR informou que a conexão GitHub está indisponível; verificações remotas e eventual prévia automática ainda não foram confirmadas. A compilação e os 169 testes locais permanecem aprovados na versão enviada.
