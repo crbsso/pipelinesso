@@ -46,6 +46,13 @@ test('posição de novembro não pode ser reutilizada em outubro e recorte ausen
  assert.equal(resumirCiclo([], [], meses, filtros({regra:'carga-148'})).registros,0);
  assert.equal(resumirCiclo([], [], [], filtros({regra:'carga-148'})).registros,null);
 });
+test('população com concessão desconhecida não cria zero confirmado para uma coligada',()=>{
+ const p=posicao({unidades:[unidade('1',2,null),unidade('2',1,'SITE','VP'),unidade('3',0)]});
+ const r=resumirCiclo([], [p], [], filtros({coligada:'24'}));
+ assert.equal(r.populacao,null);assert.equal(r.registros,null);assert.equal(r.registrosMes,null);
+ assert.match(r.motivo,/coligada/);
+ const sem=resumirCiclo([], [p], [], filtros({coligada:'sem_correspondencia'}));assert.equal(sem.populacao,1);assert.equal(sem.registros,2);
+});
 test('IDs repetidos são deduplicados, retirada/devolução e registros posteriores ao corte são excluídos',()=>{
  const d={id_inspecao:1,ficha_id:11,aba_id:106,data_inspecao:'2026-11-02T08:00:00',concessao:'CRTE',localizacao:'SE 1',ativo_id:1,familia:'Veículos',tipo:'Mensal',periodicidade:'Mensal',publicado_em:''};
  const dados=[d,{...d},{...d,id_inspecao:2,aba_id:104},{...d,id_inspecao:3,aba_id:105},{...d,id_inspecao:4,data_inspecao:'2026-11-18T08:00:00'}];

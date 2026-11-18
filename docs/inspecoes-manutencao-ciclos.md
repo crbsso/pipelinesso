@@ -3,6 +3,25 @@
 Destino: Painel Gerencial → Inspeções → **Inspeção da Manutenção**.
 A aba Segurança (Prevsys), o layout administrativo e as permissões existentes devem permanecer preservados.
 
+## Carga operacional e liberação de 18/11/2026
+
+O usuário autorizou a exceção temporária de certificado na leitura SQL e a continuidade até produção. A conexão permanece criptografada, com intenção de somente leitura; a exceção não foi tornada padrão.
+
+Foi extraído e validado o período de 01/10 a 01/12 exclusivo: 907 formulários, 114 OS e 444 atividades. Outubro contém 740 formulários; novembro, 167. A carga foi publicada e conciliada na homologação; setembro foi preservado. As cargas anteriores dos dois ambientes foram salvas localmente em `data/bronze`, fora do Git.
+
+As posições atuais de instalações, extintores e frota foram calculadas com o cadastro SQL extraído no mesmo dia: respectivamente 59/57/2, 64/51/13 e 121/94/27 unidades de população/com registro/sem registro. O cadastro continua provisório quanto à elegibilidade. Presença de respostas é informada separadamente: 57, 50 e 94 unidades, respectivamente.
+
+Ferramentas EAT/LT e carga 148/149 preservam as posições conferidas em 17/11 e sua data original. As demais categorias sem população definida mostram os registros da carga atual, sem inventar metas. Não reutilizar a população atual para meses históricos. Um filtro de coligada com vínculo desconhecido permanece sem valor confirmado.
+
+Validação final: 170 testes do frontend, 28 do backend e compilação completa aprovados. Tela conferida com a carga real: veículos em páginas 10/10/7, extintores em 10/3; CRTE 20/10/10; outubro com registros, mas sem meta histórica inferida. A publicação usa a integração Git já existente do portal; a prévia automática do PR 28 foi confirmada como pronta.
+
+### Repetição da carga
+
+1. Usar `extrair_painel_manutencao.ps1` para extrair os meses completos necessários ao início dos ciclos.
+2. Usar `extrair_populacoes_ciclos.ps1 -ArquivoBase <extracao.json> -ArquivoConfiguracao <configuracao-protegida> -DestinoJson <cadastros-novos.json>` para ler locais, frota e presença de respostas. O certificado é validado por padrão.
+3. Usar `compor_ciclos_manutencao.py --base <extracao.json> --auxiliares <cadastros.json> --conferidas <posicoes-conferidas.json> --saida <arquivo-novo.json>`. Recortes do BI exigem posições conferidas do mês correspondente, sem alteração artificial da data.
+4. Preparar as cargas com `painel_manutencao.py`; salvar a publicação anterior, publicar em homologação e conciliar antes de produção. Não versionar os arquivos de dados ou de configuração.
+
 ## Decisões aprovadas
 
 - Respeitar marca, fonte, cores, cabeçalho e menu do portal existente.

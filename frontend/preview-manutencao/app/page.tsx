@@ -2,10 +2,16 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import PreviewShell from "./shell";
 import type { InspecaoManutencao } from "../../src/lib/inspecoes/manutencao";
-import { construirMetas, type ProgramacaoManutencao, type AtividadeProgramada } from "../../src/lib/inspecoes/programacao";
+import { consolidarCargas, construirMetas, type ProgramacaoManutencao, type AtividadeProgramada } from "../../src/lib/inspecoes/programacao";
 import { validarPosicoesCiclo } from "../../src/lib/inspecoes/ciclosManutencao";
 export const dynamic = "force-dynamic";
 export default async function Page() {
+ if (process.env.SSO_CARGAS_PREVIA_JSON) {
+   const cargas = JSON.parse(await fs.readFile(process.env.SSO_CARGAS_PREVIA_JSON, "utf8"));
+   const painel = consolidarCargas(cargas);
+   const mesInicial = painel.mesesCarregados.map(m => m.mes).sort().at(-1);
+   return <PreviewShell dados={painel.dados} posicoes={painel.posicoesCiclo} meses={painel.mesesCarregados} mesInicial={mesInicial} extracao="Prévia local · carga SQL conferida" />;
+ }
  if (process.env.SSO_CICLOS_PREVIA_JSON) {
    const fonte = JSON.parse(await fs.readFile(process.env.SSO_CICLOS_PREVIA_JSON, "utf8"));
    if (fonte.versao !== 1 || fonte.origem !== "consultas_sql_conferidas" || !Array.isArray(fonte.posicoes_ciclo)) throw Error("Evidências de ciclos inválidas");

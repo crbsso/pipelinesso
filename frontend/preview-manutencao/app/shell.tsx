@@ -4,10 +4,10 @@ import type { ProgramacaoManutencao } from "../../src/app/(admin)/consultas/pain
 import type { MetaTipoInspecao } from "../../src/app/(admin)/consultas/painel-gerencial/inspecoes/GraficoTipoInspecao";
 import PainelManutencao from "../../src/app/(admin)/consultas/painel-gerencial/inspecoes/PainelCiclosManutencao";
 import type { InspecaoManutencao } from "../../src/lib/inspecoes/manutencao";
-import type { PosicaoCiclo } from "../../src/lib/inspecoes/ciclosManutencao";
+import type { MesCarregado, PosicaoCiclo } from "../../src/lib/inspecoes/ciclosManutencao";
 
-export default function PreviewShell({ dados, extracao, programacao, metasPorTipo, posicoes, mesInicial }: {
-  dados: InspecaoManutencao[]; extracao: string; programacao?: ProgramacaoManutencao; metasPorTipo?: MetaTipoInspecao[]; posicoes?: PosicaoCiclo[]; mesInicial?: string;
+export default function PreviewShell({ dados, extracao, programacao, metasPorTipo, posicoes, meses, mesInicial }: {
+  dados: InspecaoManutencao[]; extracao: string; programacao?: ProgramacaoManutencao; metasPorTipo?: MetaTipoInspecao[]; posicoes?: PosicaoCiclo[]; meses?: MesCarregado[]; mesInicial?: string;
 }) {
   const [fonte, setFonte] = useState("manutencao");
   return <div className="min-h-screen text-gray-900">
@@ -20,7 +20,7 @@ export default function PreviewShell({ dados, extracao, programacao, metasPorTip
           {[["seguranca", "Segurança"], ["manutencao", "Inspeção da Manutenção"]].map(([valor, nome]) => <button key={valor} type="button" aria-pressed={fonte === valor} onClick={() => setFonte(valor)} className={`rounded-lg px-4 py-2 text-sm font-medium ${fonte === valor ? "bg-brand-500 text-white" : "text-gray-500 hover:bg-gray-50"}`}>{nome}</button>)}
         </div>
       </div>
-      <div hidden={fonte !== "manutencao"}><PainelManutencao dadosIniciais={dados} posicoesIniciais={posicoes} mesInicial={mesInicial} extracaoLocal={extracao} programacao={programacao} metasPorTipo={metasPorTipo} /></div>
+      <div hidden={fonte !== "manutencao"}><PainelManutencao dadosIniciais={dados} posicoesIniciais={posicoes} mesesIniciais={meses} mesInicial={mesInicial} extracaoLocal={extracao} programacao={programacao} metasPorTipo={metasPorTipo} /></div>
       {fonte === "seguranca" && <section className="rounded-2xl border border-gray-200 bg-white p-8"><p className="text-xs font-semibold tracking-widest text-teal-700 uppercase">Inspeções de Segurança</p><h1 className="mt-3 text-2xl font-semibold">Processo do Prevsys</h1><p className="mt-3 max-w-xl text-sm leading-6 text-gray-500">O painel existente do Prevsys permanece no portal. Esta prévia apresenta somente a nova área da Manutenção.</p><button type="button" className="mt-5 rounded-lg bg-teal-800 px-4 py-2.5 text-sm font-medium text-white" onClick={() => setFonte("manutencao")}>Voltar à Manutenção</button></section>}
     </main>
   </div>;

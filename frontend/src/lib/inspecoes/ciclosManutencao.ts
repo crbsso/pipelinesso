@@ -126,6 +126,11 @@ export function resumirCiclo(dados: readonly InspecaoManutencao[], posicoes: rea
   if (posicao) {
     base.corte = posicao.data_corte; base.fonte = posicao.fonte; base.populacaoStatus = posicao.populacao;
     base.unidades = filtrarUnidadesCiclo(posicao.unidades,filtros);
+    if (filtros.coligada && filtros.coligada !== "sem_correspondencia" && posicao.unidades.some(u=>u.concessao===null)) {
+      base.registrosMes = null; base.populacaoStatus = "nao_definida";
+      base.motivo = "O vínculo de coligada de parte da população ainda não foi identificado na fonte.";
+      return base;
+    }
     const localComprovado = Boolean(filtros.local) && posicao.detalhe === "somente_sem_registro" && base.unidades.length > 0;
     if (escopo && posicao.detalhe !== "completo" && !localComprovado) {
       base.motivo = "A população individual ainda não permite calcular o atendimento para estes filtros.";
