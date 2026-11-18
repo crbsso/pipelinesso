@@ -24,6 +24,7 @@ Validação final: 170 testes do frontend, 28 do backend e compilação completa
 
 ## Decisões aprovadas
 
+- Linguagem do painel: “Meta aguardando confirmação” substitui “População provisória”; “Meta confirmada” e “Meta ainda não definida” distinguem os demais estados. A tela usa locais, veículos, pessoas ou itens conforme o tipo de inspeção, explica a confirmação da lista pelos responsáveis e preserva a distinção entre registro e conclusão. Seleção, período e dados até substituem recorte, ciclo e data de corte nos textos de uso diário. Códigos internos de ficha/aba ficam fora da apresentação; cálculos, filtros e dados publicados não mudam.
 - Respeitar marca, fonte, cores, cabeçalho e menu do portal existente.
 - Exibir no máximo dez unidades na lista sem registro, com navegação na parte inferior.
 - Aplicar mês, coligada, família, tipo/recorte e local aos indicadores; grupo da frota quando houver vínculo.

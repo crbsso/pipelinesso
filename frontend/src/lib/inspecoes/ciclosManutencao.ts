@@ -7,18 +7,18 @@ export type RegraCiclo = {
   exigeRecorte?: boolean; observacao?: string;
 };
 export const REGRAS_CICLOS: readonly RegraCiclo[] = [
-  { id: "inst", familia: "Instalações", nome: "Segurança em instalações", ficha: 1, periodicidade: "Trimestral", unidade: "Local / aba" },
-  { id: "ext", familia: "Extintores", nome: "Extintores de incêndio", ficha: 13, periodicidade: "Mensal", unidade: "Local / aba" },
-  { id: "veic", familia: "Veículos", nome: "Veículos de rotina", ficha: 11, abas: [106,107,108,246,384,496], periodicidade: "Mensal", unidade: "Veículo elegível", observacao: "Retirada e devolução ficam separadas da rotina mensal." },
-  { id: "ferr-eat", familia: "Ferramentas e rotativos", nome: "Ferramentas — EAT", ficha: 18, periodicidade: "Trimestral", unidade: "Instalação no recorte EAT do BI", exigeRecorte: true },
-  { id: "ferr-lt", familia: "Ferramentas e rotativos", nome: "Ferramentas — LT", ficha: 18, periodicidade: "Trimestral", unidade: "Instalação no recorte LT do BI", exigeRecorte: true, observacao: "EAT e LT podem sobrepor instalações; não somar como locais únicos." },
-  { id: "carga-148", familia: "Carga e acessórios", nome: "Movimentação de carga", ficha: 15, abas: [148], periodicidade: "Mensal", unidade: "Instalação no recorte do BI" },
-  { id: "carga-149", familia: "Carga e acessórios", nome: "Acessórios de içamento", ficha: 15, abas: [149], periodicidade: "Bimestral", unidade: "Instalação no recorte do BI" },
-  { id: "epi-150", familia: "EPIs", nome: "Cintos de segurança", ficha: 16, abas: [150], periodicidade: "Trimestral", unidade: "Pessoa usuária do EPI", observacao: "Vínculos de pessoa, população elegível e atendimento de Produto Novo aguardam validação." },
-  { id: "epi-151", familia: "EPIs", nome: "Uso de EPIs em atividade", ficha: 16, abas: [151], periodicidade: "Bimestral", unidade: "Pendente de validação" },
-  { id: "epi-467", familia: "EPIs", nome: "Capacete", ficha: 16, abas: [467], periodicidade: "Conforme demanda", unidade: "Sem meta periódica definida" },
-  { id: "epi-468", familia: "EPIs", nome: "Inspeção bimestral em EPIs", ficha: 16, abas: [468], periodicidade: "Bimestral", unidade: "Pendente de validação", observacao: "Regra bimestral aprovada; o cadastro ainda pode indicar Conforme Demanda." },
-  ...[{ id: 152, nome: "Obras civis" }, { id: 153, nome: "Brigada (BM Uberlândia)" }, { id: 154, nome: "SSO" }, { id: 248, nome: "Uso de EPIs em atividade — SSO" }].map(a => ({ id: `sso-${a.id}`, familia: "Inspeções de SSO", nome: a.nome, ficha: 17, abas: [a.id], periodicidade: "Conforme demanda" as const, unidade: "Sem meta periódica definida" })),
+  { id: "inst", familia: "Instalações", nome: "Segurança em instalações", ficha: 1, periodicidade: "Trimestral", unidade: "Local" },
+  { id: "ext", familia: "Extintores", nome: "Extintores de incêndio", ficha: 13, periodicidade: "Mensal", unidade: "Local" },
+  { id: "veic", familia: "Veículos", nome: "Veículos de rotina", ficha: 11, abas: [106,107,108,246,384,496], periodicidade: "Mensal", unidade: "Veículo da rotina mensal", observacao: "Retirada e devolução ficam separadas da rotina mensal." },
+  { id: "ferr-eat", familia: "Ferramentas e rotativos", nome: "Ferramentas — EAT", ficha: 18, periodicidade: "Trimestral", unidade: "Instalação do grupo EAT", exigeRecorte: true },
+  { id: "ferr-lt", familia: "Ferramentas e rotativos", nome: "Ferramentas — LT", ficha: 18, periodicidade: "Trimestral", unidade: "Instalação do grupo LT", exigeRecorte: true, observacao: "Uma mesma instalação pode aparecer nos grupos EAT e LT. Somar os grupos pode contar o mesmo local duas vezes." },
+  { id: "carga-148", familia: "Carga e acessórios", nome: "Movimentação de carga", ficha: 15, abas: [148], periodicidade: "Mensal", unidade: "Instalação" },
+  { id: "carga-149", familia: "Carga e acessórios", nome: "Acessórios de içamento", ficha: 15, abas: [149], periodicidade: "Bimestral", unidade: "Instalação" },
+  { id: "epi-150", familia: "EPIs", nome: "Cintos de segurança", ficha: 16, abas: [150], periodicidade: "Trimestral", unidade: "Pessoa usuária do EPI", observacao: "Ainda precisamos confirmar quem usa cada cinto, quem entra na meta e se a inspeção de um produto novo conta para a meta trimestral." },
+  { id: "epi-151", familia: "EPIs", nome: "Uso de EPIs em atividade", ficha: 16, abas: [151], periodicidade: "Bimestral", unidade: "A confirmar com os responsáveis" },
+  { id: "epi-467", familia: "EPIs", nome: "Capacete", ficha: 16, abas: [467], periodicidade: "Conforme demanda", unidade: "Sem meta fixa; inspeção conforme necessidade" },
+  { id: "epi-468", familia: "EPIs", nome: "Inspeção bimestral em EPIs", ficha: 16, abas: [468], periodicidade: "Bimestral", unidade: "A confirmar com os responsáveis", observacao: "A inspeção deve ocorrer a cada dois meses, mesmo que o cadastro indique conforme demanda." },
+  ...[{ id: 152, nome: "Obras civis" }, { id: 153, nome: "Brigada (BM Uberlândia)" }, { id: 154, nome: "SSO" }, { id: 248, nome: "Uso de EPIs em atividade — SSO" }].map(a => ({ id: `sso-${a.id}`, familia: "Inspeções de SSO", nome: a.nome, ficha: 17, abas: [a.id], periodicidade: "Conforme demanda" as const, unidade: "Sem meta fixa; inspeção conforme necessidade" })),
 ];
 export const COLIGADAS_CICLOS = [
   ["1","CRB"],["2","PTE"],["3","CTE"],["4","ENTE"],["6","LTC"],["7","IMTE"],["9","CANTE"],["10","JTE"],["11","VCTE"],["14","BTE"],["16","SITE"],["17","CRTR"],["24","CRTE"],["26","CPTE"],["28","PATE"],
@@ -128,12 +128,12 @@ export function resumirCiclo(dados: readonly InspecaoManutencao[], posicoes: rea
     base.unidades = filtrarUnidadesCiclo(posicao.unidades,filtros);
     if (filtros.coligada && filtros.coligada !== "sem_correspondencia" && posicao.unidades.some(u=>u.concessao===null)) {
       base.registrosMes = null; base.populacaoStatus = "nao_definida";
-      base.motivo = "O vínculo de coligada de parte da população ainda não foi identificado na fonte.";
+      base.motivo = "Ainda não sabemos a qual coligada pertencem alguns locais, veículos ou pessoas. Por isso, não é possível mostrar um total confiável para a coligada selecionada.";
       return base;
     }
     const localComprovado = Boolean(filtros.local) && posicao.detalhe === "somente_sem_registro" && base.unidades.length > 0;
     if (escopo && posicao.detalhe !== "completo" && !localComprovado) {
-      base.motivo = "A população individual ainda não permite calcular o atendimento para estes filtros.";
+      base.motivo = "A lista de quem precisa de inspeção ainda não está completa para os filtros selecionados.";
       base.populacaoStatus = "nao_definida"; return base;
     }
     if (escopo) {
@@ -148,15 +148,15 @@ export function resumirCiclo(dados: readonly InspecaoManutencao[], posicoes: rea
     if (regra.periodicidade === "Mensal") base.registrosMes = base.registros;
     return base;
   }
-  if (regra.exigeRecorte || filtros.grupo) { base.motivo = regra.exigeRecorte ? "A posição do recorte EAT/LT ainda não foi carregada." : "O vínculo individual com o grupo da frota ainda não foi carregado."; return base; }
+  if (regra.exigeRecorte || filtros.grupo) { base.motivo = regra.exigeRecorte ? "Os dados de instalações dos grupos EAT e LT ainda não estão disponíveis para o mês selecionado." : "Ainda não temos a identificação dos veículos de cada grupo para o mês selecionado."; return base; }
   const inicio = ciclo.inicio ?? `${filtros.mes}-01`, fim = ciclo.fim ?? ultimoDiaMes;
   const cobertos = meses.filter(m => m.mes >= inicio.slice(0,7) && m.mes <= filtros.mes && m.fichas.includes(regra.ficha));
   const corte = cobertos.map(m=>m.data_corte).sort().at(-1);
-  if (!corte) { base.motivo = "Não há extração confirmada para o mês e o recorte selecionados."; return base; }
+  if (!corte) { base.motivo = "Os dados ainda não estão disponíveis para o mês e os filtros selecionados."; return base; }
   base.corte = corte; base.registros = filtrarRegistrosCiclo(dados,regra,filtros,inicio,corte < fim ? corte : fim).length;
   const esperados = (Number(filtros.mes.slice(0,4))-Number(inicio.slice(0,4)))*12+Number(filtros.mes.slice(5,7))-Number(inicio.slice(5,7))+1;
   base.parcial = cobertos.length < esperados || corte < ultimoDiaMes;
-  base.motivo = "A população elegível deste ciclo ainda não foi carregada.";
+  base.motivo = "A lista de quem precisa de inspeção neste período ainda não está disponível.";
   return base;
 }
 export function paginarCiclo<T>(linhas: readonly T[], pagina: number) {
