@@ -1355,6 +1355,339 @@ def publicar_hml(registros):
 
 
 
+def validar_autorizacao_lote_prod(
+    plano, registros, novos, existentes, casos, remoto
+):
+    """Exige aprovacao externa do lote exato."""
+    if not plano:
+        raise RuntimeError("LOTE_COMPLEMENTACAO_VAZIO")
+
+    bronze = os.getenv(
+        "COBLI_BRONZE_TRIPS_STOPS", ""
+    ).strip()
+
+    if not bronze:
+        raise RuntimeError("BRONZE_DO_LOTE_NAO_SELECIONADA")
+
+
+    if Path(bronze).is_absolute() or Path(bronze).name != bronze:
+        raise RuntimeError("NOME_BRONZE_INVALIDO")
+
+    arquivo_bronze = PASTA_BRONZE / bronze
+    if not arquivo_bronze.is_file():
+        raise RuntimeError("BRONZE_DO_LOTE_AUSENTE")
+
+    resumo_bronze = hashlib.sha256(
+        arquivo_bronze.read_bytes()
+    ).hexdigest()
+
+    conteudo_registros = json.dumps(
+        sorted(registros, key=lambda r: r["evento_id"]),
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+        allow_nan=False,
+    )
+
+    resumo_registros = hashlib.sha256(
+        conteudo_registros.encode("utf-8")
+    ).hexdigest()
+
+    manifesto = {
+        "bronze_conteudo_sha256": resumo_bronze,
+        "registros_conteudo_sha256": resumo_registros,
+        "contrato": "portal-sso-complementacao-prod-v1",
+        "bronze": bronze,
+        "historico_total": len(remoto),
+        "eventos_lote": sorted(
+            r["evento_id"] for r in registros
+        ),
+        "eventos_novos": sorted(
+            r["evento_id"] for r in novos
+        ),
+        "existentes": existentes,
+        "conciliacoes": sorted(
+            (
+                c["evento_id_historico"],
+                c["evento_id_observado"],
+            )
+            for c in casos
+        ),
+        "pendentes": sorted(
+            (
+                p["p_evento_id_historico"],
+                p["p_evento_id_observado"],
+                normalizar_timestamp(
+                    p["p_fim_observado"]
+                ),
+                str(p["p_extraido_em_utc"]),
+            )
+            for p in plano
+        ),
+    }
+
+    calculado = hashlib.sha256(
+        json.dumps(
+            manifesto,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+    ).hexdigest()
+
+    print(
+        "LOTE_COMPLEMENTACAO_PROD_PENDENTES:",
+        len(plano),
+        flush=True,
+    )
+    print(
+        "LOTE_COMPLEMENTACAO_PROD_SHA256:",
+        calculado,
+        flush=True,
+    )
+
+    if os.getenv(
+        "SSO_HISTORICO_COMPLEMENTACAO_PROD_AUTORIZADA"
+    ) != "SIM":
+        raise RuntimeError(
+            "COMPLEMENTACAO_PROD_NAO_AUTORIZADA"
+        )
+
+    aprovado = os.getenv(
+        "SSO_HISTORICO_LOTE_COMPLEMENTACAO_PROD_SHA256",
+        "",
+    ).strip()
+
+    if not aprovado and sys.stdin.isatty():
+        print(
+            "Aprovacao humana do lote exigida.",
+            flush=True,
+        )
+        aprovado = input(
+            "Digite o SHA256 exato do lote aprovado "
+            "(ENTER bloqueia): "
+        ).strip()
+
+    if aprovado != calculado:
+        raise RuntimeError(
+            "LOTE_COMPLEMENTACAO_PROD_NAO_APROVADO"
+        )
+
+def conciliar_fins_producao(cliente, registros, remoto):
+    """Registra fins elegiveis em PROD, com autorizacao e conferencia."""
+    novos, existentes, casos = classificar_lote_incremental(
+        registros, remoto
+    )
+    if not casos:
+        return novos, existentes
+
+
+    nome_evidencia = "SSO_HISTORICO_CONCILIACOES_AUTORIZADAS_JSON"
+
+    if not os.getenv(nome_evidencia, "").strip():
+        if not sys.stdin.isatty():
+            raise RuntimeError("EVIDENCIA_CONCILIACOES_AUSENTE")
+
+        print(
+            "ETAPA 26: evid?ncia externa obrigat?ria.",
+            flush=True,
+        )
+        print(
+            "Confira independentemente os pares antes de aprovar.",
+            flush=True,
+        )
+
+        for caso in casos:
+            print(
+                "PAR_CONCILIACAO:",
+                caso["evento_id_historico"],
+                caso["evento_id_observado"],
+                flush=True,
+            )
+
+        resposta = input(
+            "Cole o JSON de evid?ncia aprovado externamente "
+            "(ENTER bloqueia): "
+        ).strip()
+
+        if not resposta:
+            raise RuntimeError("EVIDENCIA_CONCILIACOES_AUSENTE")
+
+        os.environ[nome_evidencia] = resposta
+
+    carregar_evidencia_conciliacoes_pendentes(casos)
+
+    ids = [c["evento_id_historico"] for c in casos]
+    if len(ids) != len(set(ids)):
+        raise RuntimeError("COMPLEMENTACOES_DUPLICADAS")
+
+    view = {}
+    for inicio in range(0, len(ids), TAMANHO_LOTE):
+        resposta = (
+            cliente.table("vw_motoristas_historico_fim_efetivo")
+            .select("evento_id,vehicle_id_cobli,tipo_evento,inicio,fim")
+            .in_("evento_id", ids[inicio:inicio + TAMANHO_LOTE])
+            .execute()
+        )
+        if not isinstance(resposta.data, list):
+            raise RuntimeError("VIEW_CONCILIACOES_INVALIDA")
+        for linha in resposta.data:
+            eid = str(linha.get("evento_id") or "")
+            if eid not in ids or eid in view:
+                raise RuntimeError("VIEW_IDENTIDADE_DIVERGENTE")
+            view[eid] = linha
+
+    if len(view) != len(ids):
+        raise RuntimeError("VIEW_CONCILIACOES_INCOMPLETA")
+
+    observados = {r["evento_id"]: r for r in registros}
+    pendentes = []
+
+    for caso in casos:
+        eid = caso["evento_id_historico"]
+        original = remoto.get(eid)
+        efetivo = view[eid]
+        observado = observados.get(caso["evento_id_observado"])
+
+        if original is None or observado is None:
+            raise RuntimeError("EVENTO_CONCILIACAO_AUSENTE")
+
+        inicio = normalizar_timestamp(original.get("inicio"))
+        fim = normalizar_timestamp(observado.get("fim"))
+        fim_view = normalizar_timestamp(efetivo.get("fim"))
+
+        if (
+            any(r.get("tipo_evento") != "VIAGEM"
+                for r in (original, efetivo, observado))
+            or normalizar_timestamp(original.get("fim")) is not None
+            or not inicio or not fim or fim <= inicio
+            or any(normalizar_timestamp(r.get("inicio")) != inicio
+                   for r in (efetivo, observado))
+            or inicio != normalizar_timestamp(caso["inicio"])
+            or any(r.get("vehicle_id_cobli") != caso["vehicle_id_cobli"]
+                   for r in (original, efetivo, observado))
+            or fim != normalizar_timestamp(caso["fim_observado"])
+        ):
+            raise RuntimeError("CONCILIACAO_IDENTIDADE_DIVERGENTE")
+
+        hash_observado = hash_identidade_evento({
+            "vehicle_id_cobli": observado["vehicle_id_cobli"],
+            "inicio": observado["inicio"],
+            "fim": observado["fim"],
+            "tipo_evento": "VIAGEM",
+        })
+
+        if hash_observado != caso["evento_id_observado"]:
+            raise RuntimeError("CONCILIACAO_HASH_DIVERGENTE")
+
+        if fim_view is None:
+            pendentes.append(caso)
+        elif fim_view != fim:
+            raise RuntimeError("CONCILIACAO_FIM_DIVERGENTE")
+
+    if pendentes:
+        def extracao_utc(valor):
+            if not valor:
+                raise RuntimeError("EXTRACAO_SEM_DATA")
+            data = datetime.fromisoformat(
+                str(valor).replace("Z", "+00:00")
+            )
+            if data.tzinfo is None or data.utcoffset() is None:
+                raise RuntimeError("EXTRACAO_SEM_FUSO")
+            return data.timestamp()
+
+        ids_pendentes = [
+            c["evento_id_historico"] for c in pendentes
+        ]
+        metadados = {}
+
+        for inicio in range(0, len(ids_pendentes), TAMANHO_LOTE):
+            resposta = (
+                cliente.table(TABELA)
+                .select("evento_id,extraido_em_utc")
+                .in_("evento_id",
+                     ids_pendentes[inicio:inicio + TAMANHO_LOTE])
+                .execute()
+            )
+            if not isinstance(resposta.data, list):
+                raise RuntimeError("EXTRACOES_ORIGINAIS_INVALIDAS")
+            for linha in resposta.data:
+                eid = str(linha.get("evento_id") or "")
+                if eid not in ids_pendentes or eid in metadados:
+                    raise RuntimeError("METADADO_ORIGINAL_DIVERGENTE")
+                metadados[eid] = linha["extraido_em_utc"]
+
+        if len(metadados) != len(pendentes):
+            raise RuntimeError("METADADOS_ORIGINAIS_INCOMPLETOS")
+
+        plano = []
+        for caso in pendentes:
+            observado = observados[caso["evento_id_observado"]]
+            extraido = observado.get("extraido_em_utc")
+
+            if extracao_utc(extraido) <= extracao_utc(
+                metadados[caso["evento_id_historico"]]
+            ):
+                raise RuntimeError("EXTRACAO_NAO_POSTERIOR")
+
+            plano.append({
+                "p_evento_id_historico": caso["evento_id_historico"],
+                "p_evento_id_observado": caso["evento_id_observado"],
+                "p_fim_observado": caso["fim_observado"],
+                "p_extraido_em_utc": extraido,
+            })
+
+        validar_autorizacao_lote_prod(
+            plano, registros, novos, existentes, casos, remoto
+        )
+
+        resposta = (
+            cliente.table(TABELA_STAGING)
+            .select("carga_id", count="exact")
+            .limit(1)
+            .execute()
+        )
+        if resposta.count is None or int(resposta.count) != 0:
+            raise RuntimeError("STAGING_HISTORICO_OCUPADA")
+
+        for indice, parametros in enumerate(plano, 1):
+            try:
+                resposta = cliente.rpc(
+                    "registrar_fim_complementar_motoristas_sso",
+                    parametros,
+                ).execute()
+            except Exception as erro:
+                raise RuntimeError(
+                    "RPC_COMPLEMENTACAO_PROD_INDETERMINADA; "
+                    "NAO_REEXECUTAR"
+                ) from erro
+
+            resultado = resposta.data
+            if (
+                not isinstance(resultado, dict)
+                or resultado.get("situacao")
+                   not in ("REGISTRADA", "JA_REGISTRADA")
+                or resultado.get("evento_id_historico")
+                   != parametros["p_evento_id_historico"]
+                or resultado.get("evento_id_observado")
+                   != parametros["p_evento_id_observado"]
+            ):
+                raise RuntimeError(
+                    "RPC_COMPLEMENTACAO_RESPOSTA_DIVERGENTE"
+                )
+
+            print(
+                "COMPLEMENTACOES_PROD_CONFIRMADAS:",
+                indice, "/", len(plano),
+                flush=True,
+            )
+
+    conferir_complementacoes_registradas(
+        cliente, casos, remoto, registros
+    )
+
+    return novos, existentes
+
 def publicar_producao(registros):
     """Mesma politica de insercao-only de HML, com isolamento de credenciais."""
     validar_contrato_local(registros)
@@ -1363,7 +1696,7 @@ def publicar_producao(registros):
         raise RuntimeError("Bronze Cobli desta execucao deve ser explicitamente selecionada.")
     cliente = create_client(url, chave)
     remoto = consultar_historico_hml(cliente)
-    novos, existentes = separar_ineditos(registros, remoto, cliente)
+    novos, existentes = conciliar_fins_producao(cliente, registros, remoto)
     total_antes = len(remoto)
     print("PRODUCAO: existentes no lote=", existentes,
           "novos=", len(novos), "historico inicial=", total_antes)
