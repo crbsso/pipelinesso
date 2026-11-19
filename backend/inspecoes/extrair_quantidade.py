@@ -160,12 +160,13 @@ def aguardar_texto(
 # =========================================================
 
 def garantir_login(page):
-    """Confirma sessao no menu interno; nunca confunde LoginForm com login completo.
+    """Confirma acesso real ao Reporte 360 sem depender do menu."""
+    from urllib.parse import parse_qs, urlsplit
 
-    A autenticacao Azure pode redirecionar a aba original ou abrir outra.
-    Devolve a aba autenticada para o restante da extracao.
-    """
-    from urllib.parse import urlsplit
+    destino = (
+        "https://celeo.prevsis.com/KPI/VistaKPI"
+        "?Modulo=191&NmGrupo=Reporte%20360.."
+    )
 
     print("Abrindo Prevsys...")
     page.goto(
@@ -175,109 +176,122 @@ def garantir_login(page):
     )
 
     page.wait_for_timeout(1500)
-    _, botao_login = localizar_texto(
-        page, "Azure AD Login", exact=True,
-    )
-    if botao_login is not None:
-        try:
-            if botao_login.is_visible():
-                print("Tela de login: acionando Azure AD Login...")
-                botao_login.click(timeout=20000)
-        except Exception as erro:
-            # O clique pode iniciar a navegacao antes de retornar.
-            # A confirmacao abaixo e a unica fonte de verdade.
-            print("Aviso no acionamento do Azure AD:", type(erro).__name__)
 
-    print("Aguardando pagina autenticada e menu 'Reporte 360'...")
-    print("Se houver solicitacao Microsoft/MFA, conclua-a no Edge.")
+    _, login = localizar_texto(
+        page, "Azure AD Login", exact=True
+    )
+
+    if login is not None and login.is_visible():
+        print("Acionando Azure AD Login...")
+        login.click(timeout=20000)
+
+    print("Aguardando sessao interna do Prevsys...")
 
     contexto = page.context
     prazo = time.monotonic() + 180
-    tentativas_inicio = set()
+
+    primeiro_acesso = {}
+    navegacao_iniciada = set()
 
     while time.monotonic() < prazo:
-        # Considera a aba inicial e as abas abertas pelo login federado.
         abas = [page]
-        try:
-            abas.extend(p for p in contexto.pages if p is not page)
-        except Exception:
-            pass
+        abas.extend(
+            aba for aba in contexto.pages
+            if aba is not page
+        )
 
         for aba in abas:
             try:
                 if aba.is_closed():
                     continue
+
                 atual = urlsplit(aba.url)
                 caminho = atual.path.lower().rstrip("/")
-                if atual.scheme != "https" or atual.hostname != "celeo.prevsis.com":
-                    continue
-                if caminho in ("", "/login") or caminho.startswith("/login/"):
-                    continue
-                _, menu = localizar_texto(aba, "Reporte 360", exact=False)
 
-                if menu is not None and menu.is_visible():
-                    print("Sessao autenticada confirmada:", atual.hostname + atual.path)
-                    return aba
+                if (
+                    atual.scheme != "https"
+                    or atual.hostname != "celeo.prevsis.com"
+                ):
+                    continue
 
-                # Tenta abrir Inicio uma unica vez por aba interna.
-                # A tela de login e a raiz nao autorizam esta acao.
-                chave_aba = id(aba)
-                if chave_aba not in tentativas_inicio:
-                    padrao_inicio = re.compile(
-                        r"^\s*In[i\u00ed]cio\s*$",
-                        re.IGNORECASE,
+                if (
+                    caminho in ("", "/login")
+                    or caminho.startswith("/login/")
+                ):
+                    continue
+
+                # Somente o modulo oficial e conteudo real
+                # autorizam a confirmacao da sessao.
+                if (
+                    caminho == "/kpi/vistakpi"
+                    and parse_qs(atual.query).get("Modulo") == ["191"]
+                ):
+                    tabs = aba.locator(
+                        "ul.menu-box-level2[role='tablist']"
+                        " > li > a[role='tab']"
                     )
 
-                    acionou_inicio = False
+                    for indice in range(min(tabs.count(), 30)):
+                        if tabs.nth(indice).is_visible():
+                            print(
+                                "PREVSYS_REPORT_360_VALIDADO:",
+                                atual.hostname + atual.path,
+                                flush=True,
+                            )
+                            return aba
 
-                    for frame in frames_da_pagina(aba):
-                        for papel in ("link", "button"):
-                            try:
-                                candidatos = frame.get_by_role(
-                                    papel,
-                                    name=padrao_inicio,
-                                )
-                                for indice in range(min(candidatos.count(), 10)):
-                                    candidato = candidatos.nth(indice)
-                                    if candidato.is_visible():
-                                        candidato.click(timeout=10000)
-                                        acionou_inicio = True
-                                        break
-                            except Exception as erro:
-                                print(
-                                    "Aviso ao localizar Inicio:",
-                                    type(erro).__name__,
-                                )
-                            if acionou_inicio:
-                                break
+                    continue
 
-                        if acionou_inicio:
-                            break
+                identificador = id(aba)
 
-                    if acionou_inicio:
-                        tentativas_inicio.add(chave_aba)
-                        print(
-                            "Inicio acionado automaticamente; "
-                            "aguardando menu Reporte 360."
-                        )
-            except Exception:
-                continue
+                if identificador not in primeiro_acesso:
+                    primeiro_acesso[identificador] = (
+                        time.monotonic()
+                    )
+                    print(
+                        "Pagina interna identificada; "
+                        "aguardando estabilizacao da sessao.",
+                        flush=True,
+                    )
 
-        # O wait do Playwright permite que redirecionamentos e popups avancem.
+                if (
+                    time.monotonic()
+                    - primeiro_acesso[identificador] < 5
+                ):
+                    continue
+
+                if identificador in navegacao_iniciada:
+                    continue
+
+                navegacao_iniciada.add(identificador)
+
+                print(
+                    "Navegando diretamente ao Reporte 360.",
+                    flush=True,
+                )
+
+                aba.goto(
+                    destino,
+                    wait_until="domcontentloaded",
+                    timeout=60000,
+                )
+
+            except Exception as erro:
+                print(
+                    "PrevSys: verificacao de acesso pendente:",
+                    type(erro).__name__,
+                    flush=True,
+                )
+
         try:
-            aba_espera = next((a for a in abas if not a.is_closed()), None)
-            if aba_espera is None:
-                raise RuntimeError("Todas as abas foram fechadas durante o login")
-            aba_espera.wait_for_timeout(750)
+            page.wait_for_timeout(750)
         except Exception:
             time.sleep(0.75)
 
     raise RuntimeError(
-        "Login Prevsys nao foi confirmado: pagina interna com o menu "
-        "'Reporte 360' nao apareceu em ate 180s. "
-        "A tela /Login/LoginForm NAO prova autenticacao. "
-        "Verifique no Edge se o Microsoft/Azure AD ou MFA ficou pendente. "
-        "Nenhuma extracao oficial deve prosseguir neste estado."
+        "PREVSYS_REPORT_360_NAO_CONFIRMADO: "
+        "rota, modulo ou abas nao validados em 180s. "
+        "Nenhuma extracao autorizada."
     )
 
 
